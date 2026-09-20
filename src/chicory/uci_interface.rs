@@ -93,6 +93,7 @@ impl UciInterface {
                     }
                 }
 
+                //println!("FEN||{:?}||", &fen_tokens.join(" "));
                 cur_board = Some(Board::new(&fen_tokens.join(" "), &self.engine));
             }
 
@@ -109,6 +110,7 @@ impl UciInterface {
                 }
             }
 
+        //println!("READ BOARD AS||{:?}||", cur_board);
         *self.current_board.lock().unwrap() = cur_board;
 
         Some(Cmd::Set(cur_board.unwrap()))

@@ -724,15 +724,24 @@ impl Board {
                 _ => { Move {from: 100, to: 100, board: self.clone(), promote_to: None, capture: false} }
             }
         } else {
-            new_move = match str {
-                "e1g1" | "e8g8" => self.castle(80, &engine.zobrist_keys),
-                "e1c1" | "e8c8" => self.castle(88, &engine.zobrist_keys),
-                _ => {
-                    let from = Board::lan_to_pos(&str[0..2]);
-                    let to = Board::lan_to_pos(&str[2..4]);
-                    self.move_piece(to, from, &engine.zobrist_keys)
-                }
-            };
+            let from = Board::lan_to_pos(&str[0..2]);
+            let to = Board::lan_to_pos(&str[2..4]);
+
+            if str == "e1g1" && self.kings[PieceColor::White] & 0x10 != 0 {
+                new_move = self.castle(80, &engine.zobrist_keys);
+            } else if  str == "e1c1" && self.kings[PieceColor::White] & 0x10 != 0 {
+                new_move = self.castle(88, &engine.zobrist_keys);
+            } else if str == "e8g8" && self.kings[PieceColor::White] & 0x1000000000000000 != 0 {
+                new_move = self.castle(80, &engine.zobrist_keys);
+            } else if  str == "e8c8" && self.kings[PieceColor::White] & 0x1000000000000000 != 0 {
+                new_move = self.castle(88, &engine.zobrist_keys);
+            } else {
+                new_move = self.move_piece(to, from, &engine.zobrist_keys);
+            }
+
+            //"e1c1" | "e8c8" //=> self.castle(88, &engine.zobrist_keys),
+
+
         }
 
         let king_pos = board_serialize(new_move.board.kings[!self.turn]);

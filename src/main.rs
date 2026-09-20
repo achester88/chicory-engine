@@ -59,7 +59,7 @@ fn main() {
                         let mut positions_reached = positions_reached_ref.lock().unwrap();
                         let mut transposition_table = transposition_table_ref.lock().unwrap();
 
-                        //println!("{:?}", cal_board);
+                        println!("{:?}", cal_board);
 
                         let mut time_per_move = 0;
 
