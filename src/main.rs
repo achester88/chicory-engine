@@ -14,12 +14,27 @@ use std::thread;
 use std::time::Instant;
 use uci_interface::*;
 
+use std::fs::OpenOptions;
+use std::io::prelude::*;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 fn main() {
     let engine = Arc::new(Engine::new()); //replace with ref or something :(
     let stop_calculation = Arc::new(AtomicBool::new(false));
     let finished_calculation = Arc::new(AtomicBool::new(false));
 
     let mut interface = UciInterface::new(engine.clone());
+
+    let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+    let log_name = current_time.to_string() + " _log.txt";
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .create(true) // Creates the file if it doesn't exist
+        .open(log_name).unwrap();
+
 
     loop {
         let _ = stdout().flush();
@@ -154,6 +169,7 @@ fn main() {
                     });
                 }
                 Cmd::Set(board) => { //
+                    writeln!(file, "----POS READ AS: {:?}", board);
                     println!("info score cp {}", if board.turn == PieceColor::White {eval(&board)} else {-eval(&board)});
                 }
 

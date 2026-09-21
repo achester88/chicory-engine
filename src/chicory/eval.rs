@@ -85,7 +85,7 @@ pub fn minmax(
         Some(x) => {
 
             if x >= &2 {
-                //println!("depth: {}", depth);
+                println!("depth: {}", depth);
                 return (0, None, 1, vec![]);
                 init_pos_count = x.clone();
             } else {
