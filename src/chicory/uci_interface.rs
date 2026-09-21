@@ -157,6 +157,16 @@ impl UciInterface {
     pub fn uci_new_game(&mut self) -> Option<Cmd> {
         *self.current_board.lock().unwrap() = None;
 
+        self.positions_reached
+        .lock()
+        .unwrap()
+        .clear();
+
+        self.transposition_table
+        .lock()
+        .unwrap()
+        .clear();
+
         None
     }
 

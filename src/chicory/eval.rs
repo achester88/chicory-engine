@@ -80,7 +80,7 @@ pub fn minmax(
     let test_start = Instant::now();
 
     let init_pos_count: usize;
-
+    
     match positions_reached.get(&board.zobrist_hash) {
         Some(x) => {
 
@@ -130,13 +130,37 @@ pub fn minmax(
         let entry = transposition_table.get(&board.zobrist_hash).unwrap();
         if(entry.depth >= depth) {
             //TODO CHECK IF TURN "WORKS"
-            if init_pos_count == 0 {
-                positions_reached.remove(&board.zobrist_hash);
-            } else {
-                positions_reached.insert(board.zobrist_hash, init_pos_count);
+
+            match entry.flag {
+                Flag::ALPHA => {
+                    beta = beta.min(entry.eval);
+                },
+                Flag::BETA => {
+                    alpha = alpha.max(entry.eval);
+                },
+                Flag::EXACT => {
+                    if init_pos_count == 0 {
+                        positions_reached.remove(&board.zobrist_hash);
+                    } else {
+                        positions_reached.insert(board.zobrist_hash, init_pos_count);
+                    }
+                    
+                    return (entry.eval, Some(entry.move_info), 1, vec![]);
+
+                }
             }
 
-            return (entry.eval, Some(entry.move_info), 1, vec![]);
+            if alpha >= beta {
+                if init_pos_count == 0 {
+                    positions_reached.remove(&board.zobrist_hash);
+                } else {
+                    positions_reached.insert(board.zobrist_hash, init_pos_count);
+                }
+                    
+                return (entry.eval, Some(entry.move_info), 1, vec![]);
+
+            }
+
         }
     }
 
@@ -217,14 +241,20 @@ pub fn minmax(
             }
         }
 
-        if beta <= alpha || stop_calculation.load(Ordering::Relaxed) || ((depth > 4 || top) && (time_per_move != 0 && move_timer.elapsed().as_millis() > time_per_move))
-        {
+        if beta <= alpha {
             flag = match turn {
                 PieceColor::White => Flag::BETA,
                 PieceColor::Black => Flag::ALPHA,
             };
+
             break;
+        }
+
+        if stop_calculation.load(Ordering::Relaxed) || ((depth > 4 || top) && (time_per_move != 0 && move_timer.elapsed().as_millis() > time_per_move))
+        {
+            
             early_stop = true;
+            break;
         }
     }
 
@@ -250,14 +280,16 @@ pub fn minmax(
         );
     }
 
-    transposition_table.insert(board.zobrist_hash, Entry{
-        zobrist_hash: board.zobrist_hash,
-        depth: depth,
-        flag: flag,
-        eval: best,
-        ancient: false,
-        move_info: best_move,
-    });
+    if !early_stop {
+        transposition_table.insert(board.zobrist_hash, Entry{
+            zobrist_hash: board.zobrist_hash,
+            depth: depth,
+            flag: flag,
+            eval: best,
+            ancient: false,
+            move_info: best_move,
+        });
+    }
 
     if init_pos_count == 0 {
         positions_reached.remove(&board.zobrist_hash);
@@ -413,17 +445,17 @@ fn order_moves(mut moves: Vec<Move>) -> Vec<Move> {
 pub fn eval(board: &Board) -> i32 {
     let mut score = 0;
 
-    let white_mat_score = ((board_serialize(board.pawns[PieceColor::White]).len() as i32) * 100)
-        + ((board_serialize(board.knights[PieceColor::White]).len() as i32) * 320)
-        + ((board_serialize(board.bishops[PieceColor::White]).len() as i32) * 330)
-        + ((board_serialize(board.rooks[PieceColor::White]).len() as i32) * 500)
-        + ((board_serialize(board.queens[PieceColor::White]).len() as i32) * 900);
+    let white_mat_score = ((board.pawns[PieceColor::White].count_ones() as i32) * 100)
+        + ((board.knights[PieceColor::White].count_ones() as i32) * 320)
+        + ((board.bishops[PieceColor::White].count_ones() as i32) * 330)
+        + ((board.rooks[PieceColor::White].count_ones() as i32) * 500)
+        + ((board.queens[PieceColor::White].count_ones() as i32) * 900);
 
-    let black_mat_score = ((board_serialize(board.pawns[PieceColor::Black]).len() as i32) * 100)
-        + ((board_serialize(board.knights[PieceColor::Black]).len() as i32) * 320)
-        + ((board_serialize(board.bishops[PieceColor::Black]).len() as i32) * 330)
-        + ((board_serialize(board.rooks[PieceColor::Black]).len() as i32) * 500)
-        + ((board_serialize(board.queens[PieceColor::Black]).len() as i32) * 900);
+    let black_mat_score = ((board.pawns[PieceColor::Black].count_ones() as i32) * 100)
+        + ((board.knights[PieceColor::Black].count_ones() as i32) * 320)
+        + ((board.bishops[PieceColor::Black].count_ones() as i32) * 330)
+        + ((board.rooks[PieceColor::Black].count_ones() as i32) * 500)
+        + ((board.queens[PieceColor::Black].count_ones() as i32) * 900);
 
     score += white_mat_score - black_mat_score;
 
@@ -445,21 +477,21 @@ pub fn eval(board: &Board) -> i32 {
     if white_mat_score <= 1000 {
         score += bit_cal(board.kings[PieceColor::White], WHITE_KING_END_PS_TABLE);
     } else {
-        let endgame_level = (white_mat_score - 4000) / 3000; //(pms - game max) / (game max - 1000)
-        score += ((bit_cal(board.kings[PieceColor::White], WHITE_KING_MID_PS_TABLE)
-            * (1 - endgame_level))
-            + (bit_cal(board.kings[PieceColor::White], WHITE_KING_END_PS_TABLE) * endgame_level))
-            / 2
+        let endgame_level: f32 = (white_mat_score as f32 - 4000.0) / 3000.0; //(pms - game max) / (game max - 1000)
+        score += ( ((bit_cal(board.kings[PieceColor::White], WHITE_KING_MID_PS_TABLE) as f32
+            * (1.0 - endgame_level))
+            + (bit_cal(board.kings[PieceColor::White], WHITE_KING_END_PS_TABLE) as f32 * endgame_level))
+            / 2.0) as i32
     }
 
     if black_mat_score <= 1000 {
-        score += bit_cal(board.kings[PieceColor::Black], BLACK_KING_END_PS_TABLE);
+        score -= bit_cal(board.kings[PieceColor::Black], BLACK_KING_END_PS_TABLE);
     } else {
-        let endgame_level = (white_mat_score - 4000) / 3000; //(pms - game max) / (game max - 1000)
-        score += ((bit_cal(board.kings[PieceColor::Black], BLACK_KING_MID_PS_TABLE)
-            * (1 - endgame_level))
-            + (bit_cal(board.kings[PieceColor::Black], BLACK_KING_END_PS_TABLE) * endgame_level))
-            / 2
+        let endgame_level: f32 = (black_mat_score as f32 - 4000.0) / 3000.0; //(pms - game max) / (game max - 1000)
+        score -= (((bit_cal(board.kings[PieceColor::Black], BLACK_KING_MID_PS_TABLE) as f32
+            * (1.0 - endgame_level))
+            + (bit_cal(board.kings[PieceColor::Black], BLACK_KING_END_PS_TABLE) as f32 * endgame_level))
+            / 2.0) as i32
     }
 
     score
