@@ -69,7 +69,7 @@ pub fn minmax(
     turn: PieceColor,
     par_moves: usize,
     stop_calculation: &AtomicBool,
-    time_per_move: u128,
+    time_per_move: f64,
     move_timer: Instant,
     positions_reached:  &mut MutexGuard<HashMap<u64, usize>>,
     transposition_table: &mut MutexGuard<HashMap<u64, Entry>>,
@@ -80,25 +80,30 @@ pub fn minmax(
     let test_start = Instant::now();
 
     let init_pos_count: usize;
-    
-    match positions_reached.get(&board.zobrist_hash) {
-        Some(x) => {
+   
+        if top {
+            init_pos_count = 0; //If were at the top i.e. haven't made a move, we can ignore our
+                                //pos_count
+        } else {
+        match positions_reached.get(&board.zobrist_hash) {
+            Some(x) => {
 
-            if x >= &2 {
-                println!("depth: {}", depth);
-                return (0, None, 1, vec![]);
-                init_pos_count = x.clone();
-            } else {
-                init_pos_count = x.clone();
-                positions_reached.insert(board.zobrist_hash, init_pos_count + 1);
+                if x >= &2 {
+                    //println!("depth: {}", depth);
+                    return (0, None, 1, vec![]);
+                    //init_pos_count = x.clone();
+                } else {
+                    init_pos_count = x.clone();
+                    positions_reached.insert(board.zobrist_hash, init_pos_count + 1);
 
+                }
+            },
+            None => {
+                positions_reached.insert(board.zobrist_hash, 1);
+                init_pos_count = 0;
             }
-        },
-        None => {
-            positions_reached.insert(board.zobrist_hash, 1);
-            init_pos_count = 0;
         }
-    }
+        }
 
     if depth == 0 {
         if capture {// || board.check_real != 0 {
@@ -250,7 +255,7 @@ pub fn minmax(
             break;
         }
 
-        if stop_calculation.load(Ordering::Relaxed) || ((depth > 4 || top) && (time_per_move != 0 && move_timer.elapsed().as_millis() > time_per_move))
+        if stop_calculation.load(Ordering::Relaxed) || ((depth > 4 || top) && (time_per_move != 0.0 && (move_timer.elapsed().as_millis() as f64) > time_per_move))
         {
             
             early_stop = true;
@@ -308,7 +313,7 @@ pub fn stopping_search(
     turn: PieceColor,
     par_moves: usize,
     stop_calculation: &AtomicBool,
-    time_per_move: u128,
+    time_per_move: f64,
     move_timer: Instant,
     top: bool,
     depth: usize,
@@ -363,7 +368,7 @@ pub fn stopping_search(
 
     //let mut best_move = moves[0];
 
-    let total_nodes = par_moves * moves.len();
+    let total_nodes: usize = par_moves.saturating_mul(moves.len());
 
     let mut node_count = 0;
 
@@ -403,7 +408,7 @@ pub fn stopping_search(
 
         if stop_calculation.load(Ordering::Relaxed)
             || (top)
-            && (time_per_move != 0 && move_timer.elapsed().as_millis() > time_per_move)
+            && (time_per_move != 0.0 && (move_timer.elapsed().as_millis() as f64) > time_per_move)
         {
             break;
         }

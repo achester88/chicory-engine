@@ -65,8 +65,6 @@ fn main() {
                     let positions_reached_ref = interface.positions_reached.clone();
                     let transposition_table_ref = interface.transposition_table.clone();
 
-                    println!("SPAWN");
-
                     thread::spawn(move || {
                         let move_timer = Instant::now();
                         let board = { board_ref.lock().unwrap().clone() };
@@ -76,9 +74,9 @@ fn main() {
 
                         println!("{:?}", cal_board);
 
-                        let mut time_per_move = 0;
+                        let mut time_per_move = 0.0;
 
-                        let (current_time, per_move_time);
+                        let (current_time, per_move_time): (Option<f64>, Option<f64>);
 
                         match cal_board.turn {
                             PieceColor::White => {
@@ -99,7 +97,7 @@ fn main() {
                             time_per_move = search_info.movetime.unwrap();
                         } else if current_time.is_some() {
                             time_per_move =
-                                (current_time.unwrap() / 20) + (per_move_time.unwrap_or(0) / 2);
+                                (current_time.unwrap() / 20.0) + (per_move_time.unwrap_or(0.0) / 2.0);
                             // base / 20 + increment / 2
                         }
 
@@ -113,11 +111,9 @@ fn main() {
                             stop_depth = interface.max_search_depth
                         }
 
-                        println!("FFFF");
-
                         let mut depth = 1;
                         while !&stop_calculation_clone.load(Ordering::Relaxed)
-                            && (stop_depth == 0 || depth <= stop_depth || time_per_move == 0)
+                            && (stop_depth == 0 || depth <= stop_depth || time_per_move == 0.0)
                         {
                             let (_, best_move, _, _) = minmax(
                                 &eng,
@@ -137,10 +133,15 @@ fn main() {
                                 false
                             );
 
-                            if time_per_move != 0
-                                && move_timer.elapsed().as_millis() > time_per_move
+                            if time_per_move != 0.0
+                                && (move_timer.elapsed().as_millis() as f64) > time_per_move
                             {
-                                break;
+                                //break;
+                                if (depth == 1) {
+                                    cur_best_move = best_move;//We need some move
+                                } else {
+                                    break;
+                                }
                             } else {
                                 cur_best_move = best_move;
                             }
@@ -155,15 +156,17 @@ fn main() {
                         *board_ref.lock().unwrap() = Some(cur_best_move.unwrap().board);
 
                         let zh = cur_best_move.unwrap().board.zobrist_hash;
-
+                        
+                        /*
                         if positions_reached.contains_key(&zh) {
                             let current_count = *positions_reached.get(&zh).unwrap();
                             positions_reached.insert(zh, current_count + 1);
                         } else {
                             positions_reached.insert(zh, 1);
                         }
+                        */
 
-                        println!("info string HM: {:?}", positions_reached);
+                        //println!("info string HM: {:?}", positions_reached);
 
                         stop_calculation_clone.store(false, Ordering::Relaxed);
                     });

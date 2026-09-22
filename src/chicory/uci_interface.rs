@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use crate::chicory::board::{Board, PieceColor};
 use crate::chicory::engine::Engine;
-use crate::chicory::tables::Entry;
+use crate::chicory::tables::{Entry, ZobristKeys};
 use std::sync::Arc;
 use std::sync::Mutex;
 
-type TimeInfo = [Option<u128>; 2];
+type TimeInfo = [Option<f64>; 2];
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Cmd {
@@ -21,7 +21,7 @@ pub struct SearchInfo {
     pub per_move_time: TimeInfo,
     pub depth: Option<usize>,
     pub nodes: Option<usize>,
-    pub movetime: Option<u128>,
+    pub movetime: Option<f64>,
     pub infinite: bool,
 }
 
@@ -71,6 +71,7 @@ impl UciInterface {
         let mut i = 1;
 
         let mut cur_board = self.current_board.lock().unwrap().clone();
+        let mut new_positions_reached = HashMap::new(); 
 
             if command[i] == "startpos" {
                 cur_board = Some(Board::new(
@@ -106,12 +107,24 @@ impl UciInterface {
                             .make_move(&command[i], &self.engine),
                     );
 
+                    let board_hash = cur_board.unwrap().zobrist_hash;
+
+                    match new_positions_reached.get(&board_hash) {
+                        Some(count) => {
+                            new_positions_reached.insert(board_hash, count + 1);
+                        },
+                        None => {
+                            new_positions_reached.insert(board_hash, 1);
+                        }
+                    };
+
                     i += 1;
                 }
             }
 
         //println!("READ BOARD AS||{:?}||", cur_board);
         *self.current_board.lock().unwrap() = cur_board;
+        *self.positions_reached.lock().unwrap() = new_positions_reached;
 
         Some(Cmd::Set(cur_board.unwrap()))
     }
@@ -132,13 +145,13 @@ impl UciInterface {
             match command[i + 1].parse::<u128>() {
                 Ok(val) => {
                     match command[i] {
-                        "wtime" => search_info.current_time[PieceColor::White] = Some(val),
-                        "btime" => search_info.current_time[PieceColor::Black] = Some(val),
-                        "winc" => search_info.per_move_time[PieceColor::White] = Some(val),
-                        "binc" => search_info.per_move_time[PieceColor::Black] = Some(val),
+                        "wtime" => search_info.current_time[PieceColor::White] = Some(val as f64),
+                        "btime" => search_info.current_time[PieceColor::Black] = Some(val as f64),
+                        "winc" => search_info.per_move_time[PieceColor::White] = Some(val as f64),
+                        "binc" => search_info.per_move_time[PieceColor::Black] = Some(val as f64),
                         "depth" => search_info.depth = Some(val as usize), //search x plies only.
                         "nodes" => search_info.nodes = Some(val as usize), //search x nodes only,
-                        "movetime" => search_info.movetime = Some(val), //search exactly x mseconds
+                        "movetime" => search_info.movetime = Some(val as f64), //search exactly x mseconds
                         _ => {}
                     }
                     i += 2;

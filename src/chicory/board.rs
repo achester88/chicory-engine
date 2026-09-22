@@ -54,8 +54,8 @@ impl Index<PieceColor> for [[u64; 64]; 2] {
     }
 }
 
-impl Index<PieceColor> for [Option<u128>] {
-    type Output = Option<u128>;
+impl Index<PieceColor> for [Option<f64>] {
+    type Output = Option<f64>;
 
     fn index(&self, color: PieceColor) -> &Self::Output {
         match color {
@@ -65,7 +65,7 @@ impl Index<PieceColor> for [Option<u128>] {
     }
 }
 
-impl IndexMut<PieceColor> for [Option<u128>; 2] {
+impl IndexMut<PieceColor> for [Option<f64>; 2] {
     fn index_mut(&mut self, color: PieceColor) -> &mut Self::Output {
         match color {
             PieceColor::White => &mut self[0],
@@ -717,7 +717,7 @@ impl Board {
             let from = Board::lan_to_pos(&str[0..2]);
             let to = Board::lan_to_pos(&str[2..4]);
             new_move = match str.chars().nth(4).unwrap() {
-                'k' | 'K' => self.promote_pawn_to(from, to, PieceType::Knight, &engine.zobrist_keys),
+                'n' | 'N' => self.promote_pawn_to(from, to, PieceType::Knight, &engine.zobrist_keys),
                 'b' | 'B' => self.promote_pawn_to(from, to, PieceType::Bishop, &engine.zobrist_keys),
                 'r' | 'R' => self.promote_pawn_to(from, to, PieceType::Rook, &engine.zobrist_keys),
                 'q' | 'Q' => self.promote_pawn_to(from, to, PieceType::Queen, &engine.zobrist_keys),
