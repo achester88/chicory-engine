@@ -2,7 +2,7 @@
 name = "chicory"
 authors = ["Anthony Chester <anthonychester71@gmail.com>"]
 description = "A UCI-compatible, dependence free, chess engine"
-version = "1.0.1"
+version = "1.0.2"
 repository = "https://github.com/achester88/chicory-engine/"
 license = "GPL-3.0"
 edition = "2021"
