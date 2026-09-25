@@ -41,6 +41,7 @@ jobs:
       - name: Publish artifacts and release
         uses: houseabsolute/actions-rust-release@v0
         with:
-          executable-name: chicory-${{ github.ref_name }}
+          executable-name: chicory
+          asset-name: chicory-${{ github.ref_name }}-${{ matrix.platform.target }}
           changes-file: ""
           target: ${{ matrix.platform.target }}
