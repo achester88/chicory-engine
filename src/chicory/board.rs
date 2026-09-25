@@ -4,6 +4,7 @@ use crate::chicory::bitboard::board_serialize;
 use crate::chicory::engine::Engine;
 use crate::chicory::engine::Move;
 use core::ops::{Index, IndexMut, Not};
+use crate::chicory::tables::ZobristKeys;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PieceColor {
@@ -32,17 +33,17 @@ impl Index<PieceColor> for [u64] {
     }
 }
 
-impl IndexMut<PieceColor> for [u64; 2] {
+ impl IndexMut<PieceColor> for [u64; 2] {
     fn index_mut(&mut self, color: PieceColor) -> &mut Self::Output {
         match color {
             PieceColor::White => &mut self[0],
             PieceColor::Black => &mut self[1],
         }
-    }
+   }
 }
 
-impl Index<PieceColor> for [Option<u128>] {
-    type Output = Option<u128>;
+impl Index<PieceColor> for [[u64; 64]; 2] {
+    type Output = [u64; 64];
 
     fn index(&self, color: PieceColor) -> &Self::Output {
         match color {
@@ -52,7 +53,18 @@ impl Index<PieceColor> for [Option<u128>] {
     }
 }
 
-impl IndexMut<PieceColor> for [Option<u128>; 2] {
+impl Index<PieceColor> for [Option<f64>] {
+    type Output = Option<f64>;
+
+    fn index(&self, color: PieceColor) -> &Self::Output {
+        match color {
+            PieceColor::White => &self[0],
+            PieceColor::Black => &self[1],
+        }
+    }
+}
+
+impl IndexMut<PieceColor> for [Option<f64>; 2] {
     fn index_mut(&mut self, color: PieceColor) -> &mut Self::Output {
         match color {
             PieceColor::White => &mut self[0],
@@ -91,6 +103,7 @@ pub struct Board {
 
     pub occupied: u64,
     pub pieces: [u64; 2], //All piece of the same color,
+    pub zobrist_hash: u64,
 }
 
 impl Board {
@@ -199,6 +212,7 @@ impl Board {
             full_move: fm,
             occupied: wp | wb | wn | wr | wq | wk | bp | bb | bn | br | bq | bk,
             pieces: [wp | wb | wn | wr | wq | wk, bp | bb | bn | br | bq | bk],
+            zobrist_hash: 0,
         };
 
         let king_board = new_board.kings[new_board.turn];
@@ -211,47 +225,54 @@ impl Board {
             new_board.check_full = cf;
         }
 
+        new_board.zobrist_hash = engine.zobrist_keys.get_key(new_board);
+
         new_board
     }
 
-    pub fn lookup(&self, pos: usize) -> (PieceColor, PieceType) {
+    pub fn lookup(&self, pos: usize) -> Option<(PieceColor, PieceType)> {
         let board = 1 << pos;
 
         let color: PieceColor;
 
         if board & self.pieces[PieceColor::White] != 0 {
             color = PieceColor::White;
-        } else {
+        } else if board & self.pieces[PieceColor::Black] != 0 {
             color = PieceColor::Black;
+        } else {
+            return None;
         }
 
         if board & (self.pawns[color] | self.bishops[color] | self.knights[color]) != 0 {
             if board & self.pawns[color] != 0 {
-                (color, PieceType::Pawn)
+                Some((color, PieceType::Pawn))
             } else if board & self.bishops[color] != 0 {
-                (color, PieceType::Bishop)
+                Some((color, PieceType::Bishop))
             } else {
-                (color, PieceType::Knight)
+                Some((color, PieceType::Knight))
             }
         } else {
             if board & self.rooks[color] != 0 {
-                (color, PieceType::Rook)
+                Some((color, PieceType::Rook))
             } else if board & self.queens[color] != 0 {
-                (color, PieceType::Queen)
+                Some((color, PieceType::Queen))
             } else {
-                (color, PieceType::King)
+                Some((color, PieceType::King))
             }
         }
     }
 
-    pub fn move_piece(&self, to: usize, from: usize) -> Board {
+    pub fn move_piece(&self, to: usize, from: usize, zobrist_keys: &ZobristKeys) -> Move {
         let mut new_board = self.clone();
 
-        let (pc, pt) = self.lookup(from);
-        let (old_pc, old_pt) = self.lookup(to);
+        let (pc, pt) = self.lookup(from).unwrap(); //To piece should always be there
+
+        //Remove Current Castling State From Hash
+        new_board.zobrist_hash ^= zobrist_keys.white_castling_rights[((new_board.castling & 0b1100) >> 2) as usize];
+        new_board.zobrist_hash ^= zobrist_keys.black_castling_rights[(new_board.castling & 0b0011) as usize];  //Black
 
         //Check if en_passant needs updating
-        new_board.en_passant_check(to, from, &pt);
+        new_board.en_passant_check(to, from, &pt, zobrist_keys);
 
         //CHECK FOR CHECK
         if new_board.castling != 0 && (pt == PieceType::Rook || pt == PieceType::King) {
@@ -265,7 +286,6 @@ impl Board {
                         values = 0b1100_1100;
                     }
                 };
-
                 new_board.castling &= values;
             } else {
                 //if rook cancel side its on
@@ -288,72 +308,129 @@ impl Board {
             }
         }
 
-        new_board.remove_castling(to, old_pt);
+        let capture = match self.lookup(to) {
+            Some((old_pc, old_pt)) => {
+                new_board.remove_castling(to, old_pt);
+                new_board.remove_piece(to, &old_pt, old_pc, zobrist_keys);
+                //Remove Opps piece from to pos
+                true
+            },
+            None =>  false
+        };
 
-        //Remove Opps piece from to pos
-        new_board.remove_piece(to, &old_pt, old_pc);
         //Remove from pos piece
-        new_board.remove_piece(from, &pt, pc);
+        new_board.remove_piece(from, &pt, pc, zobrist_keys);
         //Add piece to to pos
-        new_board.add_piece(to, &pt, pc);
+        new_board.add_piece(to, &pt, pc, zobrist_keys);
 
         new_board.recalc_board();
 
-        new_board.next_turn();
+        new_board.next_turn(zobrist_keys);
 
-        new_board
+        //Add Current Castling State Back to Hash
+        new_board.zobrist_hash ^= zobrist_keys.white_castling_rights[((new_board.castling & 0b1100) >> 2) as usize];
+        new_board.zobrist_hash ^= zobrist_keys.black_castling_rights[(new_board.castling & 0b0011) as usize];  //Black
+
+        //new_board
+        Move{from, to, board: new_board, promote_to: None, capture}
     }
 
-    fn en_passant_check(&mut self, to: usize, from: usize, pt: &PieceType) {
+    fn en_passant_check(&mut self, to: usize, from: usize, pt: &PieceType, zobrist_keys: &ZobristKeys) {
+
         if pt == &PieceType::Pawn {
             if to == self.en_passant as usize {
                 //remove pawn at en_pass
                 match self.turn {
                     PieceColor::White => {
-                        self.pawns[PieceColor::Black] =
-                            self.pawns[PieceColor::Black] & !(1 << self.en_passant - 8)
+                        self.pawns[PieceColor::Black] = self.pawns[PieceColor::Black] & !(1 << self.en_passant - 8);
+                        self.zobrist_hash ^= zobrist_keys.pawns[PieceColor::Black][(self.en_passant - 8) as usize];
+
                     }
                     PieceColor::Black => {
-                        self.pawns[PieceColor::White] =
-                            self.pawns[PieceColor::White] & !(1 << self.en_passant + 8)
+                        self.pawns[PieceColor::White] = self.pawns[PieceColor::White] & !(1 << self.en_passant + 8);
+                        self.zobrist_hash ^= zobrist_keys.pawns[PieceColor::White][(self.en_passant + 8) as usize];
                     }
                 };
+            }
+
+            if self.en_passant != 65 {
+                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
             }
 
             if to > 16 && (to - 16) == from && from > 7 && from < 16 {
                 //white
                 self.en_passant = (to as u8) - 8; //south_one
+                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
             } else if to < 48 && (to + 16) == from && from > 47 && from < 56 {
                 //black
                 self.en_passant = (to as u8) + 8; //north_one
+                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
             } else {
                 self.en_passant = 65;
             }
         } else {
             self.en_passant = 65;
         }
+
+
     }
 
-    fn remove_piece(&mut self, pos: usize, pt: &PieceType, pc: PieceColor) {
+    fn remove_piece(&mut self, pos: usize, pt: &PieceType, pc: PieceColor, zobrist_keys: &ZobristKeys) {
         //Remove Opps piece from to pos
         match pt {
-            PieceType::Pawn => self.pawns[pc] = self.pawns[pc] & !(1 << pos),
-            PieceType::Bishop => self.bishops[pc] = self.bishops[pc] & !(1 << pos),
-            PieceType::Knight => self.knights[pc] = self.knights[pc] & !(1 << pos),
-            PieceType::Rook => self.rooks[pc] = self.rooks[pc] & !(1 << pos),
-            PieceType::Queen => self.queens[pc] = self.queens[pc] & !(1 << pos),
-            PieceType::King => self.kings[pc] = self.kings[pc] & !(1 << pos),
+            PieceType::Pawn => {
+                self.pawns[pc] = self.pawns[pc] & !(1 << pos);
+                self.zobrist_hash ^= zobrist_keys.pawns[pc][pos];
+            },
+            PieceType::Bishop => {
+                self.bishops[pc] = self.bishops[pc] & !(1 << pos);
+                self.zobrist_hash ^= zobrist_keys.bishops[pc][pos];
+            },
+            PieceType::Knight => {
+                self.knights[pc] = self.knights[pc] & !(1 << pos);
+                self.zobrist_hash ^= zobrist_keys.knights[pc][pos];
+            },
+            PieceType::Rook => {
+                self.rooks[pc] = self.rooks[pc] & !(1 << pos);
+                self.zobrist_hash ^= zobrist_keys.rooks[pc][pos];
+            },
+            PieceType::Queen => {
+                self.queens[pc] = self.queens[pc] & !(1 << pos);
+                self.zobrist_hash ^= zobrist_keys.queens[pc][pos];
+            },
+            PieceType::King => {
+                self.kings[pc] = self.kings[pc] & !(1 << pos);
+                self.zobrist_hash ^= zobrist_keys.kings[pc][pos];
+            },
         };
     }
 
-    fn add_piece(&mut self, pos: usize, pt: &PieceType, pc: PieceColor) {
+    fn add_piece(&mut self, pos: usize, pt: &PieceType, pc: PieceColor, zobrist_keys: &ZobristKeys) {
         match pt {
-            PieceType::Pawn => self.pawns[pc] = self.pawns[pc] | (1 << pos),
-            PieceType::Bishop => self.bishops[pc] = self.bishops[pc] | (1 << pos),
-            PieceType::Knight => self.knights[pc] = self.knights[pc] | (1 << pos),
-            PieceType::Rook => self.rooks[pc] = self.rooks[pc] | (1 << pos),
-            PieceType::Queen => self.queens[pc] = self.queens[pc] | (1 << pos),
-            PieceType::King => self.kings[pc] = self.kings[pc] | (1 << pos),
+            PieceType::Pawn => {
+                self.pawns[pc] = self.pawns[pc] | (1 << pos);
+                self.zobrist_hash ^= zobrist_keys.pawns[pc][pos];
+            },
+            PieceType::Bishop => {
+                self.bishops[pc] = self.bishops[pc] | (1 << pos);
+                self.zobrist_hash ^= zobrist_keys.bishops[pc][pos];
+            },
+            PieceType::Knight => {
+                self.knights[pc] = self.knights[pc] | (1 << pos);
+                self.zobrist_hash ^= zobrist_keys.knights[pc][pos];
+            },
+            PieceType::Rook => {
+                self.rooks[pc] = self.rooks[pc] | (1 << pos);
+                self.zobrist_hash ^= zobrist_keys.rooks[pc][pos];
+            },
+            PieceType::Queen => {
+                self.queens[pc] = self.queens[pc] | (1 << pos);
+                self.zobrist_hash ^= zobrist_keys.queens[pc][pos];
+            },
+            PieceType::King => {
+                self.kings[pc] = self.kings[pc] | (1 << pos);
+                self.zobrist_hash ^= zobrist_keys.kings[pc][pos];
+            },
         };
     }
 
@@ -392,64 +469,104 @@ impl Board {
         }
     }
 
-    pub fn promote(&self, from: usize, to: usize) -> Vec<Move> {
+    pub fn promote(&self, from: usize, to: usize, zobrist_keys: &ZobristKeys) -> Vec<Move> {
         let mut new_board = self.clone();
 
-        let (pc, _) = new_board.lookup(from);
-        let (old_pc, old_pt) = new_board.lookup(to);
+        new_board.zobrist_hash ^= zobrist_keys.white_castling_rights[((new_board.castling & 0b1100) >> 2) as usize];
+        new_board.zobrist_hash ^= zobrist_keys.black_castling_rights[(new_board.castling & 0b0011) as usize];  //Black
 
-        new_board.remove_castling(to, old_pt);
+        let (pc, _) = new_board.lookup(from).unwrap();
+        //let (old_pc, old_pt) = new_board.lookup(to);
 
-        new_board.next_turn();
+        let capture = match self.lookup(to) {
+            Some((old_pc, old_pt)) => {
+                new_board.remove_castling(to, old_pt);
+                new_board.remove_piece(to, &old_pt, old_pc, zobrist_keys);
+                //Remove Opps piece from to pos
+                true
+            },
+            None =>  false
+        };
 
-        new_board.remove_piece(to, &old_pt, old_pc);
-        new_board.remove_piece(from, &PieceType::Pawn, pc);
+        new_board.zobrist_hash ^= zobrist_keys.white_castling_rights[((new_board.castling & 0b1100) >> 2) as usize];
+        new_board.zobrist_hash ^= zobrist_keys.black_castling_rights[(new_board.castling & 0b0011) as usize];  //Black
+
+        //new_board.remove_castling(to, old_pt);
+
+        new_board.next_turn(zobrist_keys);
+
+        //new_board.remove_piece(to, &old_pt, old_pc);
+        new_board.remove_piece(from, &PieceType::Pawn, pc, zobrist_keys);
+
+        if new_board.en_passant != 65 {
+            new_board.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
+            new_board.en_passant = 65;
+        }
+        //new_board.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
 
         let mut new_boards = vec![new_board.clone(); 4];
 
         new_boards[0].knights[pc] = new_board.knights[pc] | (1 << to);
+        new_boards[0].zobrist_hash ^= zobrist_keys.knights[pc][to];
+
         new_boards[1].bishops[pc] = new_board.bishops[pc] | (1 << to);
+        new_boards[1].zobrist_hash ^= zobrist_keys.bishops[pc][to];
+
         new_boards[2].rooks[pc] = new_board.rooks[pc] | (1 << to);
+        new_boards[2].zobrist_hash ^= zobrist_keys.rooks[pc][to];
+
         new_boards[3].queens[pc] = new_board.queens[pc] | (1 << to);
+        new_boards[3].zobrist_hash ^= zobrist_keys.queens[pc][to];
 
         //Check for check
         let mut out: Vec<Move> = vec![];
         //In case other piece is removed all case need to be run
         for i in 0..4 {
             new_boards[i].recalc_board();
-            new_boards[i].en_passant = 65;
+
+            //new_boards[i].en_passant = 65;
+
         }
 
-        out.push((from, to, new_boards[0], Some(PieceType::Knight)));
-        out.push((from, to, new_boards[1], Some(PieceType::Bishop)));
-        out.push((from, to, new_boards[2], Some(PieceType::Rook)));
-        out.push((from, to, new_boards[3], Some(PieceType::Queen)));
+        out.push(Move{from, to, board: new_boards[0], promote_to: Some(PieceType::Knight), capture});
+        out.push(Move{from, to, board: new_boards[1], promote_to: Some(PieceType::Bishop), capture});
+        out.push(Move{from, to, board: new_boards[2], promote_to: Some(PieceType::Rook), capture});
+        out.push(Move{from, to, board: new_boards[3], promote_to: Some(PieceType::Queen), capture});
 
         out
     }
 
-    fn promote_pawn_to(&mut self, from: usize, to: usize, pt: PieceType) -> Board {
+    fn promote_pawn_to(&mut self, from: usize, to: usize, pt: PieceType, zobrist_keys: &ZobristKeys) -> Move {
         let mut new_board = self.clone();
 
-        let (pc, _) = new_board.lookup(from);
-        let (old_pc, old_pt) = new_board.lookup(to);
+        let (pc, _) = new_board.lookup(from).unwrap();
+        //let (old_pc, old_pt) = new_board.lookup(to);
 
-        new_board.remove_castling(to, old_pt);
+        let capture = match self.lookup(to) {
+            Some((old_pc, old_pt)) => {
+                new_board.remove_castling(to, old_pt);
+                new_board.remove_piece(to, &old_pt, old_pc, zobrist_keys);
+                //Remove Opps piece from to pos
+                true
+            },
+            None =>  false
+        };
 
-        new_board.next_turn();
 
-        new_board.remove_piece(to, &old_pt, old_pc);
-        new_board.remove_piece(from, &PieceType::Pawn, pc);
+        new_board.next_turn(zobrist_keys);
 
-        new_board.add_piece(to, &pt, pc);
+        new_board.remove_piece(from, &PieceType::Pawn, pc, zobrist_keys);
+
+        new_board.add_piece(to, &pt, pc, zobrist_keys);
 
         new_board.recalc_board();
         new_board.en_passant = 65;
 
-        new_board
+        //new_board
+        Move{from, to, board: new_board, promote_to: Some(pt), capture}
     }
 
-    pub fn castle(&self, code: u8) -> Board {
+    pub fn castle(&self, code: u8, zobrist_keys: &ZobristKeys) -> Move {
         let mut new_board = self.clone();
 
         let king_from_pos: usize;
@@ -457,6 +574,9 @@ impl Board {
 
         let king_to_pos: usize;
         let rook_to_pos: usize;
+
+        new_board.zobrist_hash ^= zobrist_keys.white_castling_rights[((new_board.castling & 0b1100) >> 2) as usize];
+        new_board.zobrist_hash ^= zobrist_keys.black_castling_rights[(new_board.castling & 0b0011) as usize];  //Black
 
         match new_board.turn {
             PieceColor::White => {
@@ -493,28 +613,37 @@ impl Board {
             }
         }
 
-        new_board.en_passant = 65;
+        if new_board.en_passant != 65 {
+            new_board.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
+            new_board.en_passant = 65;
+        }
 
-        new_board.remove_piece(king_from_pos, &PieceType::King, new_board.turn);
-        new_board.remove_piece(rook_from_pos, &PieceType::Rook, new_board.turn);
+        new_board.remove_piece(king_from_pos, &PieceType::King, new_board.turn, zobrist_keys);
+        new_board.remove_piece(rook_from_pos, &PieceType::Rook, new_board.turn, zobrist_keys);
 
-        new_board.add_piece(king_to_pos, &PieceType::King, new_board.turn);
-        new_board.add_piece(rook_to_pos, &PieceType::Rook, new_board.turn);
+        new_board.add_piece(king_to_pos, &PieceType::King, new_board.turn, zobrist_keys);
+        new_board.add_piece(rook_to_pos, &PieceType::Rook, new_board.turn, zobrist_keys);
 
         new_board.recalc_board();
 
-        new_board.next_turn();
+        new_board.next_turn(zobrist_keys);
 
-        new_board
+        new_board.zobrist_hash ^= zobrist_keys.white_castling_rights[((new_board.castling & 0b1100) >> 2) as usize];
+        new_board.zobrist_hash ^= zobrist_keys.black_castling_rights[(new_board.castling & 0b0011) as usize];  //Black
+
+        //new_board
+        Move{from: code as usize, to: code as usize, board: new_board, promote_to: None, capture: false}
     }
 
-    fn next_turn(&mut self) {
+    fn next_turn(&mut self, zobrist_keys: &ZobristKeys) {
         if self.turn == PieceColor::Black {
             self.turn = PieceColor::White;
             self.full_move += 1;
         } else {
             self.turn = PieceColor::Black;
         };
+
+        self.zobrist_hash ^= zobrist_keys.black_turn;
 
         self.half_moves = self.half_moves + 1;
     }
@@ -538,21 +667,21 @@ impl Board {
     }
 
     pub fn move_to_lan(cur_move: &Move) -> String {
-        let (from, to, new_board, promo_type) = cur_move;
+        //let (Move{from, to, board: new_board, promote_to: promo_type, _}) = cur_move;
 
-        if to == &80 {
-            return match !new_board.turn {
+        if cur_move.to == 80 {
+            return match !cur_move.board.turn {
                 PieceColor::White => String::from("e1g1"),
                 PieceColor::Black => String::from("e8g8"),
             };
-        } else if to == &88 {
-            return match !new_board.turn {
+        } else if cur_move.to == 88 {
+            return match !cur_move.board.turn {
                 PieceColor::White => String::from("e1c1"),
                 PieceColor::Black => String::from("e8c8"),
             };
         }
 
-        let promo_to = match promo_type {
+        let promo_to = match cur_move.promote_to {
             Some(x) => match x {
                 PieceType::Queen => String::from("q"),
                 PieceType::Rook => String::from("r"),
@@ -563,7 +692,7 @@ impl Board {
             None => String::from(""),
         };
 
-        [Board::pos_to_lan(*from), Board::pos_to_lan(*to), promo_to].join("")
+        [Board::pos_to_lan(cur_move.from), Board::pos_to_lan(cur_move.to), promo_to].join("")
     }
 
     pub fn make_move(&mut self, str: &str, engine: &Engine) -> Board {
@@ -581,41 +710,50 @@ impl Board {
             new_board = self.move_piece(to, from);
         }
         */
-        let mut new_board: Board;
+        let mut new_move: Move;
 
         if str.len() == 5 {
             let from = Board::lan_to_pos(&str[0..2]);
             let to = Board::lan_to_pos(&str[2..4]);
-            new_board = match str.chars().nth(4).unwrap() {
-                'k' | 'K' => self.promote_pawn_to(from, to, PieceType::Knight),
-                'b' | 'B' => self.promote_pawn_to(from, to, PieceType::Bishop),
-                'r' | 'R' => self.promote_pawn_to(from, to, PieceType::Rook),
-                'q' | 'Q' => self.promote_pawn_to(from, to, PieceType::Queen),
-                _ => self.clone()
+            new_move = match str.chars().nth(4).unwrap() {
+                'n' | 'N' => self.promote_pawn_to(from, to, PieceType::Knight, &engine.zobrist_keys),
+                'b' | 'B' => self.promote_pawn_to(from, to, PieceType::Bishop, &engine.zobrist_keys),
+                'r' | 'R' => self.promote_pawn_to(from, to, PieceType::Rook, &engine.zobrist_keys),
+                'q' | 'Q' => self.promote_pawn_to(from, to, PieceType::Queen, &engine.zobrist_keys),
+                _ => { Move {from: 100, to: 100, board: self.clone(), promote_to: None, capture: false} }
             }
         } else {
-            new_board = match str {
-                "e1g1" | "e8g8" => self.castle(80),
-                "e1c1" | "e8c8" => self.castle(88),
-                _ => {
-                    let from = Board::lan_to_pos(&str[0..2]);
-                    let to = Board::lan_to_pos(&str[2..4]);
-                    self.move_piece(to, from)
-                }
-            };
+            let from = Board::lan_to_pos(&str[0..2]);
+            let to = Board::lan_to_pos(&str[2..4]);
+
+            if str == "e1g1" && self.kings[PieceColor::White] & 0x10 != 0 {
+                new_move = self.castle(80, &engine.zobrist_keys);
+            } else if  str == "e1c1" && self.kings[PieceColor::White] & 0x10 != 0 {
+                new_move = self.castle(88, &engine.zobrist_keys);
+            } else if str == "e8g8" && self.kings[PieceColor::Black] & 0x1000000000000000 != 0 {
+                new_move = self.castle(80, &engine.zobrist_keys);
+            } else if  str == "e8c8" && self.kings[PieceColor::Black] & 0x1000000000000000 != 0 {
+                new_move = self.castle(88, &engine.zobrist_keys);
+            } else {
+                new_move = self.move_piece(to, from, &engine.zobrist_keys);
+            }
+
+            //"e1c1" | "e8c8" //=> self.castle(88, &engine.zobrist_keys),
+
+
         }
 
-        let king_pos = board_serialize(new_board.kings[!self.turn]);
+        let king_pos = board_serialize(new_move.board.kings[!self.turn]);
         if king_pos.len() > 0 {
-            let (cr, cf) = engine.cal_check(&new_board, king_pos[0], self.turn);
-            new_board.check_real = cr;
-            new_board.check_full = cf;
+            let (cr, cf) = engine.cal_check(&new_move.board, king_pos[0], self.turn);
+            new_move.board.check_real = cr;
+            new_move.board.check_full = cf;
         } else {
-            new_board.check_real = 0;
-            new_board.check_full = 0;
+            new_move.board.check_real = 0;
+            new_move.board.check_full = 0;
         }
 
-        return new_board;
+        return new_move.board;
     }
 
     #[allow(dead_code)]

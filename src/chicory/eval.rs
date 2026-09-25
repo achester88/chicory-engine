@@ -1,7 +1,11 @@
+use std::collections::HashMap;
 use crate::chicory::bitboard::board_serialize;
 use crate::chicory::board::{Board, PieceColor};
 use crate::chicory::engine::{Engine, Move};
+use crate::chicory::tables::{Entry, Flag};
+
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::MutexGuard;
 use std::time::Instant;
 
 const BLACK_PAWN_PS_TABLE: [i32; 64] = [
@@ -65,14 +69,61 @@ pub fn minmax(
     turn: PieceColor,
     par_moves: usize,
     stop_calculation: &AtomicBool,
-    time_per_move: u128,
+    time_per_move: f64,
     move_timer: Instant,
+    positions_reached:  &mut MutexGuard<HashMap<u64, usize>>,
+    transposition_table: &mut MutexGuard<HashMap<u64, Entry>>,
+    eval_first: Option<Move>,
     top: bool,
-) -> (i32, Option<Move>, usize) {
+    capture: bool
+) -> (i32, Option<Move>, usize, Vec<Move>) {
     let test_start = Instant::now();
 
+    let init_pos_count: usize;
+
+        if top {
+            init_pos_count = 0; //If were at the top i.e. haven't made a move, we can ignore our
+                                //pos_count
+        } else {
+        match positions_reached.get(&board.zobrist_hash) {
+            Some(x) => {
+
+                if x >= &2 {
+                    //println!("depth: {}", depth);
+                    return (0, None, 1, vec![]);
+                    //init_pos_count = x.clone();
+                } else {
+                    init_pos_count = x.clone();
+                    positions_reached.insert(board.zobrist_hash, init_pos_count + 1);
+
+                }
+            },
+            None => {
+                positions_reached.insert(board.zobrist_hash, 1);
+                init_pos_count = 0;
+            }
+        }
+        }
+
     if depth == 0 {
-        return (eval(&board), None, 1);
+        if capture {// || board.check_real != 0 {
+            if init_pos_count == 0 {
+                positions_reached.remove(&board.zobrist_hash);
+            } else {
+                positions_reached.insert(board.zobrist_hash, init_pos_count);
+            }
+
+            return stopping_search(&eng, board, alpha, beta, turn, par_moves, stop_calculation, time_per_move, move_timer, true, 0) //(eval(&board), None, 1);
+        } else {
+
+            if init_pos_count == 0 {
+                positions_reached.remove(&board.zobrist_hash);
+            } else {
+                positions_reached.insert(board.zobrist_hash, init_pos_count);
+            }
+
+            return (eval(&board), None, 1, vec![])
+        }
     }
 
     let mut best = match turn {
@@ -80,25 +131,87 @@ pub fn minmax(
         PieceColor::Black => i32::MAX,
     };
 
-    let moves = eng.gen_moves(board);
+    if transposition_table.contains_key(&board.zobrist_hash) {
+        let entry = transposition_table.get(&board.zobrist_hash).unwrap();
+        if entry.zobrist_hash == board.zobrist_hash {
+            if entry.depth >= depth {
+                //TODO CHECK IF TURN "WORKS"
+
+                match entry.flag {
+                    Flag::ALPHA => {
+                        beta = beta.min(entry.eval);
+                    },
+                    Flag::BETA => {
+                        alpha = alpha.max(entry.eval);
+                    },
+                    Flag::EXACT => {
+                        if init_pos_count == 0 {
+                            positions_reached.remove(&board.zobrist_hash);
+                        } else {
+                            positions_reached.insert(board.zobrist_hash, init_pos_count);
+                        }
+
+                        return (entry.eval, Some(entry.move_info), 1, vec![]);
+                    }
+                }
+
+                if alpha >= beta {
+                    if init_pos_count == 0 {
+                        positions_reached.remove(&board.zobrist_hash);
+                    } else {
+                        positions_reached.insert(board.zobrist_hash, init_pos_count);
+                    }
+
+                    return (entry.eval, Some(entry.move_info), 1, vec![]);
+
+                }
+
+            }
+        }
+    }
+
+
+    let mut moves = order_moves(eng.gen_moves(board));
 
     if moves.len() == 0 {
-        return match !board.turn {
-            PieceColor::White => (i32::MAX, None, 1),
-            PieceColor::Black => (i32::MIN, None, 1),
+
+        if init_pos_count == 0 {
+            positions_reached.remove(&board.zobrist_hash);
+        } else {
+            positions_reached.insert(board.zobrist_hash, init_pos_count);
+        }
+
+        if board.check_real == 0 { //Stalemate
+            return (0, None, 1, vec![]);
+        }
+
+        return match turn {
+            PieceColor::White => (i32::MIN, None, 1, vec![]),
+            PieceColor::Black => (i32::MAX, None, 1, vec![]),
         };
     }
 
     let mut best_move = moves[0];
 
+    let mut best_pv: Vec<Move> = vec![];
+
     let total_nodes = par_moves * moves.len();
 
     let mut node_count = 0;
 
+    if eval_first.is_some() {
+        moves.insert(0, eval_first.unwrap());
+    }
+
+    let mut early_stop = false;
+
+    let mut flag = Flag::EXACT;
+
     for m in moves {
-        let (score, _, nodes) = minmax(
+
+        let (score, _, nodes, pv) = minmax(
             &eng,
-            m.2,
+            m.board,
             depth - 1,
             alpha,
             beta,
@@ -107,7 +220,11 @@ pub fn minmax(
             stop_calculation,
             time_per_move,
             move_timer,
+            positions_reached,
+            transposition_table,
+            None,
             false,
+            m.capture
         );
         node_count += nodes;
 
@@ -116,59 +233,235 @@ pub fn minmax(
                 if score > best {
                     best = score;
                     best_move = m;
+                    best_pv = pv
                 }
-                if score > alpha {
-                    alpha = score;
-                }
+                alpha = alpha.max(score);
             }
             PieceColor::Black => {
                 if score < best {
                     best = score;
                     best_move = m;
+                    best_pv = pv;
                 }
-                if score < beta {
-                    beta = score;
-                }
+                beta = beta.min(score);
             }
         }
 
-        if beta <= alpha
-            || (stop_calculation.load(Ordering::Relaxed)
-                || ((depth > 4 || top)
-                    && (time_per_move != 0 && move_timer.elapsed().as_millis() > time_per_move)))
+        if beta <= alpha {
+            flag = match turn {
+                PieceColor::White => Flag::BETA,
+                PieceColor::Black => Flag::ALPHA,
+            };
+
+            break;
+        }
+
+        if stop_calculation.load(Ordering::Relaxed) || ((depth > 4 || top) && (time_per_move != 0.0 && (move_timer.elapsed().as_millis() as f64) > time_per_move))
         {
+
+            early_stop = true;
             break;
         }
     }
 
-    if top {
+
+    best_pv.insert(0, best_move);
+
+    if top && !early_stop {
+
+        let mut pv_str = String::from("");
+
+        for m in &mut *best_pv {
+            pv_str.push_str(" ");
+            pv_str.push_str(&Board::move_to_lan(&m));
+        }
+
         println!(
-            "info depth {} nodes {} score cp {} time {} pv {}",
+            "info depth {} nodes {} score cp {} time {} pv{}",
             depth,
             node_count,
-            best,
+            if board.turn == PieceColor::White {best} else {-best},
             test_start.elapsed().as_millis(),
-            Board::move_to_lan(&best_move)
+            pv_str//Board::move_to_lan(&best_move)
         );
     }
 
-    (best, Some(best_move), node_count)
+    if !early_stop {
+        transposition_table.insert(board.zobrist_hash, Entry{
+            zobrist_hash: board.zobrist_hash,
+            depth: depth,
+            flag: flag,
+            eval: best,
+            //ancient: false,
+            move_info: best_move,
+        });
+    }
+
+    if init_pos_count == 0 {
+        positions_reached.remove(&board.zobrist_hash);
+    } else {
+        positions_reached.insert(board.zobrist_hash, init_pos_count);
+    }
+
+    (best, Some(best_move), node_count, best_pv)
+}
+
+pub fn stopping_search(
+    eng: &Engine,
+    board: Board,
+    mut alpha: i32,
+    mut beta: i32,
+    turn: PieceColor,
+    par_moves: usize,
+    stop_calculation: &AtomicBool,
+    time_per_move: f64,
+    move_timer: Instant,
+    top: bool,
+    depth: usize,
+) -> (i32, Option<Move>, usize, Vec<Move>) {
+
+    let score = eval(&board);
+
+    match turn {
+
+        PieceColor::White => {
+
+            if score >= beta {
+                return (beta, None, 1, vec![]);
+            }
+
+            alpha = alpha.max(score);
+        }
+
+        PieceColor::Black => {
+
+            if score <= alpha {
+                return (alpha, None, 1, vec![]);
+            }
+
+            beta = beta.min(score);
+        }
+    }
+
+    let moves = order_moves(eng.gen_moves(board));
+
+    if moves.is_empty() {
+
+        if board.check_real == 0 {
+            return (0, None, 1, vec![]);
+        }
+
+        return match turn {
+            PieceColor::White => (i32::MIN, None, 1, vec![]),
+            PieceColor::Black => (i32::MAX, None, 1, vec![]),
+        };
+    }
+
+    if moves.len() == 0 {
+        if board.check_real == 0 { //Stalemate
+            return (0, None, 1, vec![]);
+        }
+        return match turn {
+            PieceColor::White => (i32::MIN, None, 1, vec![]),
+            PieceColor::Black => (i32::MAX, None, 1, vec![]),
+        };
+    }
+
+    //let mut best_move = moves[0];
+
+    let total_nodes: usize = par_moves.saturating_mul(moves.len());
+
+    let mut node_count = 0;
+
+    for m in moves {
+        if m.capture { //|| m.board.check_real != 0
+            let (score, _, nodes, _pv) = stopping_search(
+                &eng,
+                m.board,
+                alpha,
+                beta,
+                !turn,
+                total_nodes,
+                stop_calculation,
+                time_per_move,
+                move_timer,
+                false,
+                depth + 1
+            );
+        node_count += nodes;
+
+
+            match turn {
+                PieceColor::White => {
+                    if score >= beta {
+                        return (beta, None, 0, vec![]);
+                    }
+                    alpha = alpha.max(score);
+                },
+                PieceColor::Black => {
+                    if score <= alpha {
+                        return (alpha, None, 0, vec![]);
+                    }
+                    beta = beta.min(score);
+                }
+            }
+
+
+        if stop_calculation.load(Ordering::Relaxed)
+            || (top)
+            && (time_per_move != 0.0 && (move_timer.elapsed().as_millis() as f64) > time_per_move)
+        {
+            break;
+        }
+            }
+    }
+
+    match turn {
+        PieceColor::White => (alpha, None, node_count + 1, vec![]),
+        PieceColor::Black => (beta, None, node_count + 1, vec![]),
+    }
+    //(best_score, None, 0)
+}
+
+fn order_moves(mut moves: Vec<Move>) -> Vec<Move> {
+    let mut out: Vec<Move> = vec![];
+
+    let mut i = 0;
+    while i < moves.len() {
+        if moves[i].promote_to.is_some() {
+            out.push(moves[i]);
+            moves.remove(i);
+        } else {
+            i += 1;
+        }
+    }
+    i = 0;
+    while i < moves.len() {
+        if moves[i].capture {
+            out.push(moves[i]);
+            moves.remove(i);
+        } else {
+            i += 1;
+        }
+    }
+    out.append(&mut moves);
+    out
 }
 
 pub fn eval(board: &Board) -> i32 {
     let mut score = 0;
 
-    let white_mat_score = ((board_serialize(board.pawns[PieceColor::White]).len() as i32) * 100)
-        + ((board_serialize(board.knights[PieceColor::White]).len() as i32) * 320)
-        + ((board_serialize(board.bishops[PieceColor::White]).len() as i32) * 330)
-        + ((board_serialize(board.rooks[PieceColor::White]).len() as i32) * 500)
-        + ((board_serialize(board.queens[PieceColor::White]).len() as i32) * 900);
+    let white_mat_score = ((board.pawns[PieceColor::White].count_ones() as i32) * 100)
+        + ((board.knights[PieceColor::White].count_ones() as i32) * 320)
+        + ((board.bishops[PieceColor::White].count_ones() as i32) * 330)
+        + ((board.rooks[PieceColor::White].count_ones() as i32) * 500)
+        + ((board.queens[PieceColor::White].count_ones() as i32) * 900);
 
-    let black_mat_score = ((board_serialize(board.pawns[PieceColor::Black]).len() as i32) * 100)
-        + ((board_serialize(board.knights[PieceColor::Black]).len() as i32) * 320)
-        + ((board_serialize(board.bishops[PieceColor::Black]).len() as i32) * 330)
-        + ((board_serialize(board.rooks[PieceColor::Black]).len() as i32) * 500)
-        + ((board_serialize(board.queens[PieceColor::Black]).len() as i32) * 900);
+    let black_mat_score = ((board.pawns[PieceColor::Black].count_ones() as i32) * 100)
+        + ((board.knights[PieceColor::Black].count_ones() as i32) * 320)
+        + ((board.bishops[PieceColor::Black].count_ones() as i32) * 330)
+        + ((board.rooks[PieceColor::Black].count_ones() as i32) * 500)
+        + ((board.queens[PieceColor::Black].count_ones() as i32) * 900);
 
     score += white_mat_score - black_mat_score;
 
@@ -190,21 +483,21 @@ pub fn eval(board: &Board) -> i32 {
     if white_mat_score <= 1000 {
         score += bit_cal(board.kings[PieceColor::White], WHITE_KING_END_PS_TABLE);
     } else {
-        let endgame_level = (white_mat_score - 4000) / 3000; //(pms - game max) / (game max - 1000)
-        score += ((bit_cal(board.kings[PieceColor::White], WHITE_KING_MID_PS_TABLE)
-            * (1 - endgame_level))
-            + (bit_cal(board.kings[PieceColor::White], WHITE_KING_END_PS_TABLE) * endgame_level))
-            / 2
+        let endgame_level: f32 = (white_mat_score as f32 - 4000.0) / 3000.0; //(pms - game max) / (game max - 1000)
+        score += ( ((bit_cal(board.kings[PieceColor::White], WHITE_KING_MID_PS_TABLE) as f32
+            * (1.0 - endgame_level))
+            + (bit_cal(board.kings[PieceColor::White], WHITE_KING_END_PS_TABLE) as f32 * endgame_level))
+            / 2.0) as i32
     }
 
     if black_mat_score <= 1000 {
-        score += bit_cal(board.kings[PieceColor::Black], BLACK_KING_END_PS_TABLE);
+        score -= bit_cal(board.kings[PieceColor::Black], BLACK_KING_END_PS_TABLE);
     } else {
-        let endgame_level = (white_mat_score - 4000) / 3000; //(pms - game max) / (game max - 1000)
-        score += ((bit_cal(board.kings[PieceColor::Black], BLACK_KING_MID_PS_TABLE)
-            * (1 - endgame_level))
-            + (bit_cal(board.kings[PieceColor::Black], BLACK_KING_END_PS_TABLE) * endgame_level))
-            / 2
+        let endgame_level: f32 = (black_mat_score as f32 - 4000.0) / 3000.0; //(pms - game max) / (game max - 1000)
+        score -= (((bit_cal(board.kings[PieceColor::Black], BLACK_KING_MID_PS_TABLE) as f32
+            * (1.0 - endgame_level))
+            + (bit_cal(board.kings[PieceColor::Black], BLACK_KING_END_PS_TABLE) as f32 * endgame_level))
+            / 2.0) as i32
     }
 
     score

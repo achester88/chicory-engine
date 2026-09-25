@@ -1,9 +1,11 @@
+use std::collections::HashMap;
 use crate::chicory::board::{Board, PieceColor};
 use crate::chicory::engine::Engine;
+use crate::chicory::tables::{Entry};
 use std::sync::Arc;
 use std::sync::Mutex;
 
-type TimeInfo = [Option<u128>; 2];
+type TimeInfo = [Option<f64>; 2];
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Cmd {
@@ -19,7 +21,7 @@ pub struct SearchInfo {
     pub per_move_time: TimeInfo,
     pub depth: Option<usize>,
     pub nodes: Option<usize>,
-    pub movetime: Option<u128>,
+    pub movetime: Option<f64>,
     pub infinite: bool,
 }
 
@@ -28,13 +30,19 @@ pub struct UciInterface {
     //current_move: usize,
     pub max_search_depth: usize,
     engine: Arc<Engine>,
+
+    pub positions_reached: Arc<Mutex<HashMap<u64, usize>>>,
+    pub transposition_table: Arc<Mutex<HashMap<u64, Entry>>>
 }
 impl UciInterface {
     pub fn new(engine: Arc<Engine>) -> Self {
         UciInterface {
             current_board: Arc::new(Mutex::new(None)),
-            max_search_depth: 12,
+            max_search_depth: 99,
             engine: engine,
+
+            positions_reached: Arc::new(Mutex::new(HashMap::new())),
+            transposition_table: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -62,11 +70,9 @@ impl UciInterface {
     pub fn position(&mut self, command: Vec<&str>) -> Option<Cmd> {
         let mut i = 1;
 
-        let mut cur_board = self.current_board.lock().unwrap().clone();
+        let mut cur_board ;
+        let mut new_positions_reached = HashMap::new(); 
 
-        let new_game = cur_board.is_none();
-
-        if new_game {
             if command[i] == "startpos" {
                 cur_board = Some(Board::new(
                     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -75,6 +81,7 @@ impl UciInterface {
 
                 i += 1;
             } else {
+                i += 1;
                 let mut fen_tokens = vec![];
 
                 //collect all of fen string
@@ -87,6 +94,7 @@ impl UciInterface {
                     }
                 }
 
+                //println!("FEN||{:?}||", &fen_tokens.join(" "));
                 cur_board = Some(Board::new(&fen_tokens.join(" "), &self.engine));
             }
 
@@ -99,37 +107,24 @@ impl UciInterface {
                             .make_move(&command[i], &self.engine),
                     );
 
+                    let board_hash = cur_board.unwrap().zobrist_hash;
+
+                    match new_positions_reached.get(&board_hash) {
+                        Some(count) => {
+                            new_positions_reached.insert(board_hash, count + 1);
+                        },
+                        None => {
+                            new_positions_reached.insert(board_hash, 1);
+                        }
+                    };
+
                     i += 1;
                 }
             }
-        } else {
-            cur_board = Some(Board::new(
-                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                &self.engine,
-            ));
 
-            if command[i] == "startpos" {
-                i += 1;
-
-                if i < command.len() && command[i] == "moves" {
-                    i += 1;
-                    //let mut all_moves = vec![];
-                    while i < command.len() {
-                        //all_moves.push(&command[i]);
-                        cur_board = Some(
-                            cur_board
-                                .unwrap()
-                                .make_move(&command[i], &self.engine),
-                        );
-                        i += 1;
-
-                    }
-
-                }
-            }
-        }
-
+        //println!("READ BOARD AS||{:?}||", cur_board);
         *self.current_board.lock().unwrap() = cur_board;
+        *self.positions_reached.lock().unwrap() = new_positions_reached;
 
         Some(Cmd::Set(cur_board.unwrap()))
     }
@@ -150,13 +145,13 @@ impl UciInterface {
             match command[i + 1].parse::<u128>() {
                 Ok(val) => {
                     match command[i] {
-                        "wtime" => search_info.current_time[PieceColor::White] = Some(val),
-                        "btime" => search_info.current_time[PieceColor::Black] = Some(val),
-                        "winc" => search_info.per_move_time[PieceColor::White] = Some(val),
-                        "binc" => search_info.per_move_time[PieceColor::Black] = Some(val),
+                        "wtime" => search_info.current_time[PieceColor::White] = Some(val as f64),
+                        "btime" => search_info.current_time[PieceColor::Black] = Some(val as f64),
+                        "winc" => search_info.per_move_time[PieceColor::White] = Some(val as f64),
+                        "binc" => search_info.per_move_time[PieceColor::Black] = Some(val as f64),
                         "depth" => search_info.depth = Some(val as usize), //search x plies only.
                         "nodes" => search_info.nodes = Some(val as usize), //search x nodes only,
-                        "movetime" => search_info.movetime = Some(val), //search exactly x mseconds
+                        "movetime" => search_info.movetime = Some(val as f64), //search exactly x mseconds
                         _ => {}
                     }
                     i += 2;
@@ -174,6 +169,16 @@ impl UciInterface {
     }
     pub fn uci_new_game(&mut self) -> Option<Cmd> {
         *self.current_board.lock().unwrap() = None;
+
+        self.positions_reached
+        .lock()
+        .unwrap()
+        .clear();
+
+        self.transposition_table
+        .lock()
+        .unwrap()
+        .clear();
 
         None
     }

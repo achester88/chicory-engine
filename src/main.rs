@@ -14,12 +14,28 @@ use std::thread;
 use std::time::Instant;
 use uci_interface::*;
 
+//use std::fs::OpenOptions;
+//use std::io::prelude::*;
+//use std::time::{SystemTime, UNIX_EPOCH};
+
 fn main() {
     let engine = Arc::new(Engine::new()); //replace with ref or something :(
     let stop_calculation = Arc::new(AtomicBool::new(false));
     let finished_calculation = Arc::new(AtomicBool::new(false));
 
     let mut interface = UciInterface::new(engine.clone());
+
+    //let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+    //let log_name = current_time.to_string() + " _log.txt";
+
+    /*
+    let mut file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .create(true) // Creates the file if it doesn't exist
+        .open(log_name).unwrap();
+    */
 
     loop {
         let _ = stdout().flush();
@@ -47,17 +63,21 @@ fn main() {
                     let finished_calculation_clone = Arc::clone(&finished_calculation);
                     let eng = engine.clone();
                     let board_ref = interface.current_board.clone();
+                    let positions_reached_ref = interface.positions_reached.clone();
+                    let transposition_table_ref = interface.transposition_table.clone();
 
                     thread::spawn(move || {
                         let move_timer = Instant::now();
                         let board = { board_ref.lock().unwrap().clone() };
                         let cal_board = board.unwrap();
+                        let mut positions_reached = positions_reached_ref.lock().unwrap();
+                        let mut transposition_table = transposition_table_ref.lock().unwrap();
 
-                        println!("{:?}", cal_board);
+                        //println!("{:?}", cal_board);
 
-                        let mut time_per_move = 0;
+                        let mut time_per_move = 0.0;
 
-                        let (current_time, per_move_time);
+                        let (current_time, per_move_time): (Option<f64>, Option<f64>);
 
                         match cal_board.turn {
                             PieceColor::White => {
@@ -78,7 +98,7 @@ fn main() {
                             time_per_move = search_info.movetime.unwrap();
                         } else if current_time.is_some() {
                             time_per_move =
-                                (current_time.unwrap() / 20) + (per_move_time.unwrap_or(0) / 2);
+                                (current_time.unwrap() / 20.0) + (per_move_time.unwrap_or(0.0) / 2.0);
                             // base / 20 + increment / 2
                         }
 
@@ -94,9 +114,9 @@ fn main() {
 
                         let mut depth = 1;
                         while !&stop_calculation_clone.load(Ordering::Relaxed)
-                            && (depth <= stop_depth || time_per_move == 0)
+                            && (stop_depth == 0 || depth <= stop_depth || time_per_move == 0.0)
                         {
-                            let (_, best_move, _) = minmax(
+                            let (_, best_move, _, _) = minmax(
                                 &eng,
                                 cal_board,
                                 depth,
@@ -107,13 +127,22 @@ fn main() {
                                 &stop_calculation_clone,
                                 time_per_move,
                                 move_timer,
+                                &mut positions_reached,
+                                &mut transposition_table,
+                                cur_best_move,
                                 true,
+                                false
                             );
 
-                            if time_per_move != 0
-                                && move_timer.elapsed().as_millis() > time_per_move
+                            if time_per_move != 0.0
+                                && (move_timer.elapsed().as_millis() as f64) > time_per_move
                             {
-                                break;
+                                //break;
+                                if depth == 1 {
+                                    cur_best_move = best_move;//We need some move
+                                } else {
+                                    break;
+                                }
                             } else {
                                 cur_best_move = best_move;
                             }
@@ -123,15 +152,29 @@ fn main() {
 
                         finished_calculation_clone.store(true, Ordering::Relaxed);
 
-                        let (_, _, board, _) = cur_best_move.unwrap(); //*best_move_lock;
+                        //let (_, _, board, _) = cur_best_move.unwrap(); //*best_move_lock;
                         println!("bestmove {}", Board::move_to_lan(&cur_best_move.unwrap()));
-                        *board_ref.lock().unwrap() = Some(board);
+                        *board_ref.lock().unwrap() = Some(cur_best_move.unwrap().board);
+
+                        //let zh = cur_best_move.unwrap().board.zobrist_hash;
+                        
+                        /*
+                        if positions_reached.contains_key(&zh) {
+                            let current_count = *positions_reached.get(&zh).unwrap();
+                            positions_reached.insert(zh, current_count + 1);
+                        } else {
+                            positions_reached.insert(zh, 1);
+                        }
+                        */
+
+                        //println!("info string HM: {:?}", positions_reached);
 
                         stop_calculation_clone.store(false, Ordering::Relaxed);
                     });
                 }
-                Cmd::Set(board) => {
-                    println!("info score cp {}", eval(&board));
+                Cmd::Set(board) => { //
+                    //writeln!(file, "----POS READ AS: {:?}", board);
+                    println!("info score cp {}", if board.turn == PieceColor::White {eval(&board)} else {-eval(&board)});
                 }
 
                 Cmd::Stop => {
@@ -161,7 +204,7 @@ fn main() {
                             (count as f64 / stop_time as f64) * 1000.0
                         );
                     });
-                }
+                },
             }
         }
     }

@@ -20,10 +20,9 @@ fn perft_from_string(eng: &Engine, board: Board, list: String, depth: usize) -> 
 
     let moves = eng.gen_moves(board);
     for m in moves {
-        let (_, _, new_board, _) = m;
         results.insert(
             Board::move_to_lan(&m),
-            multi_perft(&eng, new_board, depth - 1, THREAD_COUNT),
+            multi_perft(&eng, m.board, depth - 1, THREAD_COUNT),
         );
     }
 

@@ -1,4 +1,3 @@
-use chicory::chicory::bitboard::print_bitboard_pos;
 use chicory::chicory::board::Board;
 use chicory::chicory::engine::{Engine, Move};
 
@@ -16,6 +15,7 @@ fn pawn_base() {
     assert_fen_arr(
         &mut moves,
         &mut fen_arr(
+            &eng,
             10,
             vec![
                 (18, "8/8/8/8/8/2Pp4/8/8 b - - 1 1"),
@@ -36,6 +36,7 @@ fn knight_base() {
     assert_fen_arr(
         &mut moves,
         &mut fen_arr(
+                &eng,
             27,
             vec![
                 (10, "8/8/2p2n2/8/2p1p3/1r6/2N1p3/8 b - - 1 1"),
@@ -60,6 +61,7 @@ fn queen_base() {
 
     //Queen
     let mut fen_moves = fen_arr(
+        &eng,
         28,
         vec![
             (1, "8/1K6/6p1/8/1p6/4p3/8/1Q6 b - - 1 1"),
@@ -88,6 +90,7 @@ fn queen_base() {
 
     //King
     fen_moves.append(&mut fen_arr(
+        &eng,
         49,
         vec![
             (40, "8/8/K5p1/8/1p2Q3/4p3/8/8 b - - 1 1"),
@@ -115,6 +118,7 @@ fn pawn_en_passant() {
     assert_fen_arr(
         &mut moves,
         &mut fen_arr(
+            &eng,
             35,
             vec![
                 (43, "8/8/3P4/4p3/8/8/8/8 b - - 1 1"),
@@ -134,6 +138,7 @@ fn pawn_promote() {
     assert_fen_arr(
         &mut moves,
         &mut fen_arr(
+            &eng,
             49,
             vec![
                 (57, "1N6/8/8/8/8/8/8/8 b - - 1 1"),
@@ -155,6 +160,7 @@ fn pawn_promote_black() {
     assert_fen_arr(
         &mut moves,
         &mut fen_arr(
+            &eng,
             09,
             vec![
                 (01, "8/8/8/8/8/8/8/1n6 w - - 2 2"),
@@ -176,6 +182,7 @@ fn pawn_capture_promote() {
     let mut fen_moves: Vec<Move> = vec![];
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         50,
         vec![
             (57, "1N6/8/8/8/8/8/8/8 b - - 1 1"),
@@ -186,6 +193,7 @@ fn pawn_capture_promote() {
     ));
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         50,
         vec![
             (58, "1pN5/8/8/8/8/8/8/8 b - - 1 1"),
@@ -213,6 +221,7 @@ fn king_check() {
     println!("Moves: {:?}", moves);
 
     let mut fen_moves = fen_arr(
+        &eng,
         36,
         vec![
             (28, "7b/8/8/8/4K2B/8/8/8 b - - 1 1"),
@@ -225,6 +234,7 @@ fn king_check() {
     );
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         31,
         vec![(45, "7b/8/5B2/4K3/8/8/8/8 b - - 1 1")],
     ));
@@ -247,9 +257,10 @@ fn king_to_check() {
     checked_board.check_real = 0x10000000000000; //check_real;
     checked_board.check_full = 0x2000000000000000;
 
-    fen_moves.push((44, 52, checked_board, None));
+    fen_moves.push(Move{from: 44, to: 52, board: checked_board, promote_to: None, capture: false});
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         03,
         vec![
             (02, "5k2/8/4P3/8/8/8/8/2K5 b - - 1 1"),
@@ -278,9 +289,10 @@ fn king_to_check_next() {
     checked_board.check_real = 0x10000000000000; //check_real;
     checked_board.check_full = 0x2000000000000000;
 
-    fen_moves.push((44, 52, checked_board, None));
+    fen_moves.push(Move{from: 44, to: 52, board: checked_board, promote_to: None, capture: false});
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         03,
         vec![
             (02, "5k2/8/4P3/8/8/8/8/2K5 b - - 1 1"),
@@ -293,13 +305,12 @@ fn king_to_check_next() {
 
     assert_fen_arr(&mut moves, &mut fen_moves);
 
-    let (_, _, next_board, _) = moves[0];
-
-    let mut next_moves = eng.gen_moves(next_board);
+    let mut next_moves = eng.gen_moves(moves[0].board);
 
     assert_fen_arr(
         &mut next_moves,
         &mut fen_arr(
+            &eng,
             61,
             vec![
                 (52, "8/4k3/8/8/8/8/8/3K4 w - - 2 2"),
@@ -322,9 +333,10 @@ fn king_castling() {
 
     println!("Moves: {:?}", moves);
 
-    fen_moves = fen_arr(80, vec![(80, "4k3/8/8/8/8/8/8/5RK1 b - - 1 1")]);
+    fen_moves = fen_arr(&eng,80, vec![(80, "4k3/8/8/8/8/8/8/5RK1 b - - 1 1")]);
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         7,
         vec![
             (5, "4k3/8/8/8/8/8/8/4KR2 b - - 1 1"),
@@ -343,9 +355,10 @@ fn king_castling() {
     checked_board.check_real = 0xe000000000000000; //check_real;
     checked_board.check_full = 0x7f80808080808080;
 
-    fen_moves.push((7, 63, checked_board, None));
+    fen_moves.push(Move{from: 7, to: 63, board: checked_board, promote_to: None, capture: false});
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         04,
         vec![
             (3, "4k3/8/8/8/8/8/8/3K3R b - - 1 1"),
@@ -372,6 +385,7 @@ fn black_king_castling() {
     let mut moves = eng.gen_moves(board);
 
     fen_moves = fen_arr(
+        &eng,
         56,
         vec![
             (48, "2P1k3/r7/8/8/8/8/P7/R3K3 w Q - 1 2"),
@@ -381,6 +395,7 @@ fn black_king_castling() {
     );
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         60,
         vec![
             (51, "r1P5/P2k4/8/8/8/8/P7/R3K3 w Q - 1 2"),
@@ -398,15 +413,15 @@ fn black_king_castling() {
 fn queenside_blocked_castling() {
     let eng = Engine::new();
     let board = Board::new("r3k3/1P6/P7/8/8/8/8/4K3 w q - 0 1", &eng);
-    let (_, _, start, _) = eng.gen_moves(board)[8];
 
     let mut fen_moves: Vec<Move>;
 
-    println!("Moves: {:?}", start);
+    println!("Moves: {:?}", eng.gen_moves(board)[8].board);
 
-    let mut moves = eng.gen_moves(start);
+    let mut moves = eng.gen_moves(eng.gen_moves(board)[8].board);
 
     fen_moves = fen_arr(
+        &eng,
         56,
         vec![
             (48, "4k3/rP6/8/8/8/8/8/4K3 w - - 2 2"),
@@ -417,6 +432,7 @@ fn queenside_blocked_castling() {
     );
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         60,
         vec![
             (51, "r7/PP1k4/8/8/8/8/8/4K3 w - - 2 2"),
@@ -434,11 +450,11 @@ fn queenside_blocked_castling() {
 fn discovered_check() {
     let eng = Engine::new();
     let board = Board::new("8/1k6/8/8/8/5P2/6B1/8 w - - 0 1", &eng);
-    let (_, _, start, _) = eng.gen_moves(board)[3];
 
-    let mut moves = eng.gen_moves(start);
+    let mut moves = eng.gen_moves(eng.gen_moves(board)[3].board);
 
     let mut fen_moves = fen_arr(
+        &eng,
         49,
         vec![
             (40, "8/8/k7/8/5P2/8/6B1/8 w - - 2 2"),
@@ -458,11 +474,10 @@ fn king_capture_check() {
     let eng = Engine::new();
     let board = Board::new("8/1k6/8/8/8/2K5/6r1/8 b - - 1 1", &eng);
 
-    let (_, _, start, _) = eng.gen_moves(board)[3];
-
-    let mut moves = eng.gen_moves(start);
+    let mut moves = eng.gen_moves(eng.gen_moves(board)[3].board);
 
     let mut fen_moves = fen_arr(
+        &eng,
         18,
         vec![
             (10, "8/1k6/8/8/8/8/2K5/8 b - - 3 2"),
@@ -483,11 +498,10 @@ fn king_capture_double_check() {
     let eng = Engine::new();
     let board = Board::new("8/1k6/8/5q2/8/2K5/2r5/8 b - - 1 1", &eng);
 
-    let (_, _, start, _) = eng.gen_moves(board)[16];
-
-    let mut moves = eng.gen_moves(start);
+    let mut moves = eng.gen_moves(eng.gen_moves(board)[16].board);
 
     let mut fen_moves = fen_arr(
+        &eng,
         18,
         vec![
             (10, "8/1k6/5q2/8/8/8/2K5/8 b - - 3 2"),
@@ -505,11 +519,10 @@ fn black_promotion_check() {
     let eng = Engine::new();
     let board = Board::new("8/1P6/3k4/8/8/7K/8/8 w - - 1 1", &eng);
 
-    let (_, _, start, _) = eng.gen_moves(board)[3];
-
-    let mut moves = eng.gen_moves(start);
+    let mut moves = eng.gen_moves(eng.gen_moves(board)[3].board);
 
     let mut fen_moves = fen_arr(
+        &eng,
         43,
         vec![
             (34, "1Q6/8/8/2k5/8/7K/8/8 w - - 3 2"),
@@ -530,13 +543,12 @@ fn blocked_castle_att() {
     let eng = Engine::new();
     let board = Board::new("8/8/8/2b5/4p3/8/8/4K2R b K - 0 1", &eng);
 
-    let (_, _, start, _) = eng.gen_moves(board)[11];
+    let mut moves = eng.gen_moves(eng.gen_moves(board)[11].board);
 
-    let mut moves = eng.gen_moves(start);
-
-    let mut fen_moves = fen_arr(80, vec![(80, "8/8/8/2b5/8/4p3/8/5RK1 b - - 2 2")]);
+    let mut fen_moves = fen_arr(&eng,80, vec![(80, "8/8/8/2b5/8/4p3/8/5RK1 b - - 2 2")]);
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         7,
         vec![
             (5, "8/8/8/2b5/8/4p3/8/4KR2 b - - 2 2"),
@@ -552,6 +564,7 @@ fn blocked_castle_att() {
     ));
 
     fen_moves.append(&mut fen_arr(
+        &eng,
         4,
         vec![
             (3, "8/8/8/2b5/8/4p3/8/3K3R b - - 2 2"),

@@ -11,8 +11,7 @@ pub fn perft(eng: &Engine, board: Board, depth: usize) -> usize {
 
     let moves = eng.gen_moves(board);
     for m in moves {
-        let (_, _, new_board, _) = m;
-        count += perft(eng, new_board, depth - 1);
+        count += perft(eng, m.board, depth - 1);
     }
 
     count
@@ -52,8 +51,8 @@ pub fn multi_perft(eng: &Engine, board: Board, depth: usize, thread_count: usize
             s.spawn(move || {
                 let mut count = 0;
 
-                for (_, _, b, _) in set {
-                    count += perft(eng, b, depth - 1);
+                for m in set {
+                    count += perft(eng, m.board, depth - 1);
                 }
                 ctx.send(count).unwrap();
             });
@@ -86,9 +85,8 @@ pub fn multi_perft_list(
 
     let moves = eng.gen_moves(board);
     for m in moves {
-        let (_, _, new_board, _) = m;
 
-        let child_total = multi_perft(&eng, new_board, depth - 1, thread_count);
+        let child_total = multi_perft(&eng, m.board, depth - 1, thread_count);
         result.push((Board::move_to_lan(&m), child_total));
         total += child_total;
     }
