@@ -15,7 +15,7 @@ pub struct Entry {
     pub depth: usize,
     pub flag: Flag,
     pub eval: i32,
-    pub ancient: bool,
+    //pub ancient: bool,
     pub move_info: Move,
 }
 
@@ -37,13 +37,13 @@ pub struct ZobristKeys {
 
 impl ZobristKeys {
     pub fn new() -> Self {
-        let mut white_castling_rights = [
+        let white_castling_rights = [
             RandomState::new().build_hasher().finish() as u64,
             RandomState::new().build_hasher().finish() as u64,
             RandomState::new().build_hasher().finish() as u64,
             RandomState::new().build_hasher().finish() as u64
         ];
-        let mut black_castling_rights = [
+        let black_castling_rights = [
             RandomState::new().build_hasher().finish() as u64,
             RandomState::new().build_hasher().finish() as u64,
             RandomState::new().build_hasher().finish() as u64,

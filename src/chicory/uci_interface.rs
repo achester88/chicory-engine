@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::chicory::board::{Board, PieceColor};
 use crate::chicory::engine::Engine;
-use crate::chicory::tables::{Entry, ZobristKeys};
+use crate::chicory::tables::{Entry};
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -70,7 +70,7 @@ impl UciInterface {
     pub fn position(&mut self, command: Vec<&str>) -> Option<Cmd> {
         let mut i = 1;
 
-        let mut cur_board = self.current_board.lock().unwrap().clone();
+        let mut cur_board ;
         let mut new_positions_reached = HashMap::new(); 
 
             if command[i] == "startpos" {

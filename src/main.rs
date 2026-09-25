@@ -14,9 +14,9 @@ use std::thread;
 use std::time::Instant;
 use uci_interface::*;
 
-use std::fs::OpenOptions;
-use std::io::prelude::*;
-use std::time::{SystemTime, UNIX_EPOCH};
+//use std::fs::OpenOptions;
+//use std::io::prelude::*;
+//use std::time::{SystemTime, UNIX_EPOCH};
 
 fn main() {
     let engine = Arc::new(Engine::new()); //replace with ref or something :(
@@ -25,16 +25,17 @@ fn main() {
 
     let mut interface = UciInterface::new(engine.clone());
 
-    let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    //let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-    let log_name = current_time.to_string() + " _log.txt";
+    //let log_name = current_time.to_string() + " _log.txt";
 
+    /*
     let mut file = OpenOptions::new()
         .write(true)
         .append(true)
         .create(true) // Creates the file if it doesn't exist
         .open(log_name).unwrap();
-
+    */
 
     loop {
         let _ = stdout().flush();
@@ -72,7 +73,7 @@ fn main() {
                         let mut positions_reached = positions_reached_ref.lock().unwrap();
                         let mut transposition_table = transposition_table_ref.lock().unwrap();
 
-                        println!("{:?}", cal_board);
+                        //println!("{:?}", cal_board);
 
                         let mut time_per_move = 0.0;
 
@@ -137,7 +138,7 @@ fn main() {
                                 && (move_timer.elapsed().as_millis() as f64) > time_per_move
                             {
                                 //break;
-                                if (depth == 1) {
+                                if depth == 1 {
                                     cur_best_move = best_move;//We need some move
                                 } else {
                                     break;
@@ -155,7 +156,7 @@ fn main() {
                         println!("bestmove {}", Board::move_to_lan(&cur_best_move.unwrap()));
                         *board_ref.lock().unwrap() = Some(cur_best_move.unwrap().board);
 
-                        let zh = cur_best_move.unwrap().board.zobrist_hash;
+                        //let zh = cur_best_move.unwrap().board.zobrist_hash;
                         
                         /*
                         if positions_reached.contains_key(&zh) {
@@ -172,7 +173,7 @@ fn main() {
                     });
                 }
                 Cmd::Set(board) => { //
-                    writeln!(file, "----POS READ AS: {:?}", board);
+                    //writeln!(file, "----POS READ AS: {:?}", board);
                     println!("info score cp {}", if board.turn == PieceColor::White {eval(&board)} else {-eval(&board)});
                 }
 

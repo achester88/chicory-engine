@@ -4,7 +4,6 @@ use crate::chicory::bitboard::board_serialize;
 use crate::chicory::engine::Engine;
 use crate::chicory::engine::Move;
 use core::ops::{Index, IndexMut, Not};
-use std::hash::Hash;
 use crate::chicory::tables::ZobristKeys;
 
 #[derive(Debug, PartialEq, Clone, Copy)]

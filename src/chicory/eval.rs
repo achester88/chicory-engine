@@ -80,7 +80,7 @@ pub fn minmax(
     let test_start = Instant::now();
 
     let init_pos_count: usize;
-   
+
         if top {
             init_pos_count = 0; //If were at the top i.e. haven't made a move, we can ignore our
                                 //pos_count
@@ -133,39 +133,40 @@ pub fn minmax(
 
     if transposition_table.contains_key(&board.zobrist_hash) {
         let entry = transposition_table.get(&board.zobrist_hash).unwrap();
-        if(entry.depth >= depth) {
-            //TODO CHECK IF TURN "WORKS"
+        if entry.zobrist_hash == board.zobrist_hash {
+            if entry.depth >= depth {
+                //TODO CHECK IF TURN "WORKS"
 
-            match entry.flag {
-                Flag::ALPHA => {
-                    beta = beta.min(entry.eval);
-                },
-                Flag::BETA => {
-                    alpha = alpha.max(entry.eval);
-                },
-                Flag::EXACT => {
+                match entry.flag {
+                    Flag::ALPHA => {
+                        beta = beta.min(entry.eval);
+                    },
+                    Flag::BETA => {
+                        alpha = alpha.max(entry.eval);
+                    },
+                    Flag::EXACT => {
+                        if init_pos_count == 0 {
+                            positions_reached.remove(&board.zobrist_hash);
+                        } else {
+                            positions_reached.insert(board.zobrist_hash, init_pos_count);
+                        }
+
+                        return (entry.eval, Some(entry.move_info), 1, vec![]);
+                    }
+                }
+
+                if alpha >= beta {
                     if init_pos_count == 0 {
                         positions_reached.remove(&board.zobrist_hash);
                     } else {
                         positions_reached.insert(board.zobrist_hash, init_pos_count);
                     }
-                    
+
                     return (entry.eval, Some(entry.move_info), 1, vec![]);
 
                 }
-            }
-
-            if alpha >= beta {
-                if init_pos_count == 0 {
-                    positions_reached.remove(&board.zobrist_hash);
-                } else {
-                    positions_reached.insert(board.zobrist_hash, init_pos_count);
-                }
-                    
-                return (entry.eval, Some(entry.move_info), 1, vec![]);
 
             }
-
         }
     }
 
@@ -257,13 +258,13 @@ pub fn minmax(
 
         if stop_calculation.load(Ordering::Relaxed) || ((depth > 4 || top) && (time_per_move != 0.0 && (move_timer.elapsed().as_millis() as f64) > time_per_move))
         {
-            
+
             early_stop = true;
             break;
         }
     }
 
-    
+
     best_pv.insert(0, best_move);
 
     if top && !early_stop {
@@ -291,7 +292,7 @@ pub fn minmax(
             depth: depth,
             flag: flag,
             eval: best,
-            ancient: false,
+            //ancient: false,
             move_info: best_move,
         });
     }
@@ -374,7 +375,7 @@ pub fn stopping_search(
 
     for m in moves {
         if m.capture { //|| m.board.check_real != 0
-            let (score, _, nodes, pv) = stopping_search(
+            let (score, _, nodes, _pv) = stopping_search(
                 &eng,
                 m.board,
                 alpha,
