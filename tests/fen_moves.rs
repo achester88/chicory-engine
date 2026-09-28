@@ -1,19 +1,19 @@
-use chicory::chicory::board::Board;
-use chicory::chicory::engine::{Engine, Move};
+use chicory::chicory::board::{Board, Move};
+use chicory::chicory::engine::Engine;
 
 mod common;
-use crate::common::assert_fen_arr;
+use crate::common::{assert_fen_arr, gen_oldmoves, moves_to_oldmoves, OldMove};
 use common::fen_arr;
 
 #[test]
 fn pawn_base() {
     let eng = Engine::new();
     let board = Board::new("8/8/8/8/8/3p4/2P5/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(board);
+    let mut moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
-        &mut moves,
+        &mut moves_to_oldmoves(&eng, &board, moves),
         &mut fen_arr(
             &eng,
             10,
@@ -30,11 +30,11 @@ fn pawn_base() {
 fn knight_base() {
     let eng = Engine::new();
     let board = Board::new("8/8/2p2n2/8/2pNp3/1r6/4p3/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(board);
+    let mut moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
-        &mut moves,
+        &mut moves_to_oldmoves(&eng, &board, moves),
         &mut fen_arr(
                 &eng,
             27,
@@ -56,7 +56,7 @@ fn knight_base() {
 fn queen_base() {
     let eng = Engine::new();
     let board = Board::new("8/1K6/6p1/8/1p2Q3/4p3/8/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(board);
+    let mut moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     //Queen
@@ -104,7 +104,8 @@ fn queen_base() {
         ],
     ));
 
-    assert_fen_arr(&mut moves, &mut fen_moves);
+    assert_fen_arr(&mut moves_to_oldmoves(&eng, &board, moves), &mut fen_moves);
+
 }
 
 //en_passant
@@ -112,11 +113,11 @@ fn queen_base() {
 fn pawn_en_passant() {
     let eng = Engine::new();
     let board = Board::new("8/8/8/3Pp3/8/8/8/8 w - e6 0 1", &eng);
-    let mut moves = eng.gen_moves(board);
+    let mut moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
-        &mut moves,
+        &mut moves_to_oldmoves(&eng, &board, moves),
         &mut fen_arr(
             &eng,
             35,
@@ -132,11 +133,11 @@ fn pawn_en_passant() {
 fn pawn_promote() {
     let eng = Engine::new();
     let board = Board::new("8/1P6/8/8/8/8/8/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(board);
+    let mut moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
-        &mut moves,
+        &mut moves_to_oldmoves(&eng, &board, moves),
         &mut fen_arr(
             &eng,
             49,
@@ -154,11 +155,11 @@ fn pawn_promote() {
 fn pawn_promote_black() {
     let eng = Engine::new();
     let board = Board::new("8/8/8/8/8/8/1p6/8 b - - 1 1", &eng);
-    let mut moves = eng.gen_moves(board);
+    let mut moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
-        &mut moves,
+        &mut moves_to_oldmoves(&eng, &board, moves),
         &mut fen_arr(
             &eng,
             09,
@@ -176,10 +177,10 @@ fn pawn_promote_black() {
 fn pawn_capture_promote() {
     let eng = Engine::new();
     let board = Board::new("1p6/2P5/8/8/8/8/8/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(board);
+    let mut moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
-    let mut fen_moves: Vec<Move> = vec![];
+    let mut fen_moves: Vec<OldMove> = vec![];
 
     fen_moves.append(&mut fen_arr(
         &eng,
@@ -203,7 +204,7 @@ fn pawn_capture_promote() {
         ],
     ));
 
-    assert_fen_arr(&mut moves, &mut fen_moves);
+    assert_fen_arr(&mut moves_to_oldmoves(&eng, &board, moves), &mut fen_moves);
 }
 
 #[test]
@@ -217,7 +218,7 @@ fn king_check() {
     board.check_real = check_real;
     board.check_full = check_full;
 
-    let mut moves = eng.gen_moves(board);
+    let mut moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     let mut fen_moves = fen_arr(
@@ -239,7 +240,7 @@ fn king_check() {
         vec![(45, "7b/8/5B2/4K3/8/8/8/8 b - - 1 1")],
     ));
 
-    assert_fen_arr(&mut moves, &mut fen_moves);
+    assert_fen_arr(&mut moves_to_oldmoves(&eng, &board, moves), &mut fen_moves);
 }
 
 #[test]
@@ -247,17 +248,19 @@ fn king_to_check() {
     let eng = Engine::new();
     let board = Board::new("5k2/8/4P3/8/8/8/8/3K4 w - - 0 1", &eng);
 
-    let mut moves = eng.gen_moves(board);
+    let moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
-    let mut fen_moves: Vec<Move> = vec![];
+    let mut fen_moves: Vec<OldMove> = vec![];
 
     let mut checked_board = Board::new("5k2/4P3/8/8/8/8/8/3K4 b - - 1 1", &eng);
 
     checked_board.check_real = 0x10000000000000; //check_real;
     checked_board.check_full = 0x2000000000000000;
 
-    fen_moves.push(Move{from: 44, to: 52, board: checked_board, promote_to: None, capture: false});
+    fen_moves.push(OldMove{from: 44, to: 52, board: checked_board, promote_to: None, capture: false});
+
+    println!("===========Start of FM=============: {:?}", fen_moves);
 
     fen_moves.append(&mut fen_arr(
         &eng,
@@ -271,7 +274,9 @@ fn king_to_check() {
         ],
     ));
 
-    assert_fen_arr(&mut moves, &mut fen_moves);
+    println!("==============End of FM===============: {:?}", fen_moves);
+
+    assert_fen_arr(&mut moves_to_oldmoves(&eng, &board, moves), &mut fen_moves);
 }
 
 #[test]
@@ -279,17 +284,17 @@ fn king_to_check_next() {
     let eng = Engine::new();
     let board = Board::new("5k2/8/4P3/8/8/8/8/3K4 w - - 0 1", &eng);
 
-    let mut moves = eng.gen_moves(board);
+    let mut moves = gen_oldmoves(&eng, &board); //eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
-    let mut fen_moves: Vec<Move> = vec![];
+    let mut fen_moves: Vec<OldMove> = vec![];
 
     let mut checked_board = Board::new("5k2/4P3/8/8/8/8/8/3K4 b - - 1 1", &eng);
 
     checked_board.check_real = 0x10000000000000; //check_real;
     checked_board.check_full = 0x2000000000000000;
 
-    fen_moves.push(Move{from: 44, to: 52, board: checked_board, promote_to: None, capture: false});
+    fen_moves.push(OldMove{from: 44, to: 52, board: checked_board, promote_to: None, capture: false});
 
     fen_moves.append(&mut fen_arr(
         &eng,
@@ -303,12 +308,18 @@ fn king_to_check_next() {
         ],
     ));
 
+    //let mut oldmoves = moves_to_oldmoves(&eng, &board, moves);
+    //let next_moves = eng.gen_moves(&oldmoves[0].board);
+
+
     assert_fen_arr(&mut moves, &mut fen_moves);
 
-    let mut next_moves = eng.gen_moves(moves[0].board);
+    //println!("SPLIT----------------");
+
+    let mut next_moves = eng.gen_moves(&moves[0].board);
 
     assert_fen_arr(
-        &mut next_moves,
+        &mut moves_to_oldmoves(&eng, &moves[0].board, next_moves),
         &mut fen_arr(
             &eng,
             61,
@@ -327,13 +338,13 @@ fn king_to_check_next() {
 fn king_castling() {
     let eng = Engine::new();
     let board = Board::new("4k3/8/8/8/8/8/8/4K2R w K - 0 1", &eng);
-    let mut moves = eng.gen_moves(board);
+    let mut moves = gen_oldmoves(&eng, &board);
 
-    let mut fen_moves: Vec<Move>;
+    let mut fen_moves: Vec<OldMove>;
 
     println!("Moves: {:?}", moves);
 
-    fen_moves = fen_arr(&eng,80, vec![(80, "4k3/8/8/8/8/8/8/5RK1 b - - 1 1")]);
+    fen_moves = fen_arr(&eng,4, vec![(6, "4k3/8/8/8/8/8/8/5RK1 b - - 1 1")]);
 
     fen_moves.append(&mut fen_arr(
         &eng,
@@ -355,7 +366,7 @@ fn king_castling() {
     checked_board.check_real = 0xe000000000000000; //check_real;
     checked_board.check_full = 0x7f80808080808080;
 
-    fen_moves.push(Move{from: 7, to: 63, board: checked_board, promote_to: None, capture: false});
+    fen_moves.push(OldMove{from: 7, to: 63, board: checked_board, promote_to: None, capture: false});
 
     fen_moves.append(&mut fen_arr(
         &eng,
@@ -378,11 +389,11 @@ fn black_king_castling() {
     let board = Board::new("r1P1k3/P7/8/8/8/8/P7/R3K3 b Qq - 0 1", &eng);
     //let (_, _,start) = eng.gen_moves(board)[0];
 
-    let mut fen_moves: Vec<Move>;
+    let mut fen_moves: Vec<OldMove>;
 
     println!("Moves: {:?}", board);
 
-    let mut moves = eng.gen_moves(board);
+    let mut moves = gen_oldmoves(&eng, &board);
 
     fen_moves = fen_arr(
         &eng,
@@ -414,11 +425,11 @@ fn queenside_blocked_castling() {
     let eng = Engine::new();
     let board = Board::new("r3k3/1P6/P7/8/8/8/8/4K3 w q - 0 1", &eng);
 
-    let mut fen_moves: Vec<Move>;
+    let mut fen_moves: Vec<OldMove>;
 
-    println!("Moves: {:?}", eng.gen_moves(board)[8].board);
+    println!("Moves: {:?}", gen_oldmoves(&eng, &board)[8].board);
 
-    let mut moves = eng.gen_moves(eng.gen_moves(board)[8].board);
+    let mut moves = gen_oldmoves(&eng, &gen_oldmoves(&eng, &board)[8].board);
 
     fen_moves = fen_arr(
         &eng,
@@ -451,7 +462,7 @@ fn discovered_check() {
     let eng = Engine::new();
     let board = Board::new("8/1k6/8/8/8/5P2/6B1/8 w - - 0 1", &eng);
 
-    let mut moves = eng.gen_moves(eng.gen_moves(board)[3].board);
+    let mut moves = gen_oldmoves(&eng, &gen_oldmoves(&eng, &board)[3].board);
 
     let mut fen_moves = fen_arr(
         &eng,
@@ -474,7 +485,7 @@ fn king_capture_check() {
     let eng = Engine::new();
     let board = Board::new("8/1k6/8/8/8/2K5/6r1/8 b - - 1 1", &eng);
 
-    let mut moves = eng.gen_moves(eng.gen_moves(board)[3].board);
+    let mut moves = gen_oldmoves(&eng, &gen_oldmoves(&eng, &board)[3].board);
 
     let mut fen_moves = fen_arr(
         &eng,
@@ -488,7 +499,7 @@ fn king_capture_check() {
         ],
     );
 
-    println!("Moves: {:?}", eng.gen_moves(board)[3]);
+    println!("Moves: {:?}", eng.gen_moves(&board)[3]);
     assert_fen_arr(&mut moves, &mut fen_moves);
 }
 
@@ -498,7 +509,7 @@ fn king_capture_double_check() {
     let eng = Engine::new();
     let board = Board::new("8/1k6/8/5q2/8/2K5/2r5/8 b - - 1 1", &eng);
 
-    let mut moves = eng.gen_moves(eng.gen_moves(board)[16].board);
+    let mut moves = gen_oldmoves(&eng, &gen_oldmoves(&eng, &board)[16].board);
 
     let mut fen_moves = fen_arr(
         &eng,
@@ -519,7 +530,7 @@ fn black_promotion_check() {
     let eng = Engine::new();
     let board = Board::new("8/1P6/3k4/8/8/7K/8/8 w - - 1 1", &eng);
 
-    let mut moves = eng.gen_moves(eng.gen_moves(board)[3].board);
+    let mut moves = gen_oldmoves(&eng, &gen_oldmoves(&eng, &board)[3].board);
 
     let mut fen_moves = fen_arr(
         &eng,
@@ -534,18 +545,22 @@ fn black_promotion_check() {
         ],
     );
 
-    println!("Moves: {:?}", eng.gen_moves(board)[3]);
+    println!("Moves: {:?}", gen_oldmoves(&eng, &board)[3]);
     assert_fen_arr(&mut moves, &mut fen_moves);
 }
+
 
 #[test]
 fn blocked_castle_att() {
     let eng = Engine::new();
     let board = Board::new("8/8/8/2b5/4p3/8/8/4K2R b K - 0 1", &eng);
 
-    let mut moves = eng.gen_moves(eng.gen_moves(board)[11].board);
+    gen_oldmoves(&eng, &board)[11].board.print_board();
 
-    let mut fen_moves = fen_arr(&eng,80, vec![(80, "8/8/8/2b5/8/4p3/8/5RK1 b - - 2 2")]);
+    let mut moves = gen_oldmoves(&eng, &gen_oldmoves(&eng, &board)[11].board);
+    //let mut moves = eng.gen_moves(&initial_moves[11]);
+
+    let mut fen_moves = fen_arr(&eng,4, vec![(6, "8/8/8/2b5/8/4p3/8/5RK1 b - - 2 2")]);
 
     fen_moves.append(&mut fen_arr(
         &eng,

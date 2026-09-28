@@ -7,7 +7,7 @@ const THREAD_COUNT: usize = 8;
 
 #[allow(dead_code)]
 
-fn perft_from_string(eng: &Engine, board: Board, list: String, depth: usize) -> bool {
+fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize) -> bool {
     let lines: Vec<&str> = list.split("\n").collect();
 
     let mut expected: HashMap<String, usize> = HashMap::new();
@@ -18,12 +18,14 @@ fn perft_from_string(eng: &Engine, board: Board, list: String, depth: usize) -> 
         expected.insert(parts[0].to_string(), parts[1].parse::<usize>().unwrap());
     }
 
-    let moves = eng.gen_moves(board);
+    let moves = eng.gen_moves(&board);
     for m in moves {
+        board.make_move(eng, m);
         results.insert(
             Board::move_to_lan(&m),
-            multi_perft(&eng, m.board, depth - 1, THREAD_COUNT),
+            multi_perft(&eng, board.clone(), depth - 1, THREAD_COUNT),
         );
+        board.unmake_move(m, eng);
     }
 
     let mut pass = true;

@@ -1,7 +1,7 @@
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
 
-use super::engine::Move;
+use crate::chicory::board::Move;
 use super::board::{Board, PieceColor};
 
 pub enum Flag {
@@ -15,7 +15,7 @@ pub struct Entry {
     pub depth: usize,
     pub flag: Flag,
     pub eval: i32,
-    //pub ancient: bool,
+    pub ancient: bool,
     pub move_info: Move,
 }
 

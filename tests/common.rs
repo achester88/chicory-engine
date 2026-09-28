@@ -1,19 +1,29 @@
-use board::Board;
+use board::{Board, Move};
 use chicory::chicory::{board, engine};
-use engine::{Move, Engine};
+use chicory::chicory::board::PieceType;
+use engine::Engine;
 
-pub fn fen_arr(eng: &Engine, from: usize, new_boards: Vec<(usize, &str)>) -> Vec<Move> {
-    let mut boards: Vec<Move> = vec![];
+#[derive(Debug, PartialEq)]
+pub struct OldMove {
+    pub from: usize,
+    pub to: usize,
+    pub board: Board,
+    pub promote_to: Option<PieceType>,
+    pub capture: bool,
+}
+
+pub fn fen_arr(eng: &Engine, from: usize, new_boards: Vec<(usize, &str)>) -> Vec<OldMove> {
+    let mut boards: Vec<OldMove> = vec![];
     //let eng = engine::Engine::new(); //Only for testing
 
     for (to, fen) in new_boards.iter() {
-        boards.push((Move{from, to: *to, board: Board::new(fen, eng), promote_to: None, capture: false}));
+        boards.push((OldMove{from, to: *to, board: Board::new(fen, eng), promote_to: None, capture: false}));
     }
 
     boards
 }
 
-pub fn assert_fen_arr(eng_arr: &mut Vec<Move>, expc_arr: &mut Vec<Move>) {
+pub fn assert_fen_arr(eng_arr: &mut Vec<OldMove>, expc_arr: &mut Vec<OldMove>) {
     for i in 0..eng_arr.len() {
         //let mut board2 = board.clone();
 
@@ -32,4 +42,20 @@ pub fn assert_fen_arr(eng_arr: &mut Vec<Move>, expc_arr: &mut Vec<Move>) {
     }
 
     assert_eq!(eng_arr, expc_arr);
+}
+
+pub fn moves_to_oldmoves(eng: &Engine, init_board: &Board, moves: Vec<Move>) -> Vec<OldMove> {
+    let mut oldmoves: Vec<OldMove> = vec![];
+    for m in moves {
+        let mut mboard = init_board.clone();
+        mboard.make_move(eng, m);
+
+        oldmoves.push(OldMove {from: m.from, to: m.to, board: mboard, promote_to: m.promote_to, capture: false } );
+    }
+    return oldmoves;
+}
+
+pub fn gen_oldmoves(eng: &Engine, board: &Board) -> Vec<OldMove> {
+    let moves: Vec<Move> = eng.gen_moves(board);
+    return moves_to_oldmoves(eng, board, moves);
 }

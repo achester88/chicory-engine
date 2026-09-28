@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::chicory::bitboard::board_serialize;
-use crate::chicory::board::{Board, PieceColor};
-use crate::chicory::engine::{Engine, Move};
+use crate::chicory::board::{Board, Move, PieceColor};
+use crate::chicory::engine::Engine;
 use crate::chicory::tables::{Entry, Flag};
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -62,7 +62,7 @@ const WHITE_KING_END_PS_TABLE: [i32; 64] = reverse_array(BLACK_KING_END_PS_TABLE
 
 pub fn minmax(
     eng: &Engine,
-    board: Board,
+    board: &mut Board,
     depth: usize,
     mut alpha: i32,
     mut beta: i32,
@@ -75,7 +75,8 @@ pub fn minmax(
     transposition_table: &mut MutexGuard<HashMap<u64, Entry>>,
     eval_first: Option<Move>,
     top: bool,
-    capture: bool
+    capture: bool,
+    master_ancient_node: bool
 ) -> (i32, Option<Move>, usize, Vec<Move>) {
     let test_start = Instant::now();
 
@@ -171,7 +172,7 @@ pub fn minmax(
     }
 
 
-    let mut moves = order_moves(eng.gen_moves(board));
+    let mut moves = eng.gen_moves(&board);//order_moves(eng.gen_moves(board));
 
     if moves.len() == 0 {
 
@@ -209,9 +210,11 @@ pub fn minmax(
 
     for m in moves {
 
+        let did_capture_occur = board.make_move(eng, m);
+
         let (score, _, nodes, pv) = minmax(
             &eng,
-            m.board,
+            board,
             depth - 1,
             alpha,
             beta,
@@ -224,7 +227,8 @@ pub fn minmax(
             transposition_table,
             None,
             false,
-            m.capture
+            did_capture_occur,
+            master_ancient_node
         );
         node_count += nodes;
 
@@ -253,6 +257,7 @@ pub fn minmax(
                 PieceColor::Black => Flag::ALPHA,
             };
 
+            board.unmake_move(m, eng);
             break;
         }
 
@@ -260,8 +265,11 @@ pub fn minmax(
         {
 
             early_stop = true;
+            board.unmake_move(m, eng);
             break;
         }
+
+        board.unmake_move(m, eng);
     }
 
 
@@ -292,7 +300,7 @@ pub fn minmax(
             depth: depth,
             flag: flag,
             eval: best,
-            //ancient: false,
+            ancient: master_ancient_node,
             move_info: best_move,
         });
     }
@@ -308,7 +316,7 @@ pub fn minmax(
 
 pub fn stopping_search(
     eng: &Engine,
-    board: Board,
+    board: &mut Board,
     mut alpha: i32,
     mut beta: i32,
     turn: PieceColor,
@@ -343,7 +351,7 @@ pub fn stopping_search(
         }
     }
 
-    let moves = order_moves(eng.gen_moves(board));
+    let moves = eng.gen_moves(board); //order_moves(eng.gen_moves(board));
 
     if moves.is_empty() {
 
@@ -374,10 +382,13 @@ pub fn stopping_search(
     let mut node_count = 0;
 
     for m in moves {
-        if m.capture { //|| m.board.check_real != 0
+
+        let did_capture_occur = board.make_move(eng, m);
+
+        if did_capture_occur { //|| m.board.check_real != 0
             let (score, _, nodes, _pv) = stopping_search(
                 &eng,
-                m.board,
+                board,
                 alpha,
                 beta,
                 !turn,
@@ -394,12 +405,14 @@ pub fn stopping_search(
             match turn {
                 PieceColor::White => {
                     if score >= beta {
+                        board.unmake_move(m, eng);
                         return (beta, None, 0, vec![]);
                     }
                     alpha = alpha.max(score);
                 },
                 PieceColor::Black => {
                     if score <= alpha {
+                        board.unmake_move(m, eng);
                         return (alpha, None, 0, vec![]);
                     }
                     beta = beta.min(score);
@@ -411,9 +424,12 @@ pub fn stopping_search(
             || (top)
             && (time_per_move != 0.0 && (move_timer.elapsed().as_millis() as f64) > time_per_move)
         {
+            board.unmake_move(m, eng);
             break;
         }
             }
+
+        board.unmake_move(m, eng);
     }
 
     match turn {
@@ -423,6 +439,7 @@ pub fn stopping_search(
     //(best_score, None, 0)
 }
 
+/*
 fn order_moves(mut moves: Vec<Move>) -> Vec<Move> {
     let mut out: Vec<Move> = vec![];
 
@@ -447,6 +464,7 @@ fn order_moves(mut moves: Vec<Move>) -> Vec<Move> {
     out.append(&mut moves);
     out
 }
+*/
 
 pub fn eval(board: &Board) -> i32 {
     let mut score = 0;

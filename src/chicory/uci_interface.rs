@@ -101,11 +101,8 @@ impl UciInterface {
             if i < command.len() && command[i] == "moves" {
                 i += 1;
                 while i < command.len() {
-                    cur_board = Some(
-                        cur_board
-                            .unwrap()
-                            .make_move(&command[i], &self.engine),
-                    );
+                    cur_board.unwrap().make_move(&self.engine, Board::lan_to_move(&command[i]));
+
 
                     let board_hash = cur_board.unwrap().zobrist_hash;
 
