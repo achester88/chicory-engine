@@ -61,7 +61,7 @@ fn main() -> ExitCode {
         let mut i = 0;
         while i < test.node_count.len() && i <= depth_limit {
             print!("    D{} ", i);
-            let count = multi_perft(&engine, board, i, 8); //perft(&engine, board, i);
+            let count = multi_perft(&engine, board.clone(), i, 8); //perft(&engine, board, i);
             let outcome = check_outcome(count, test.node_count[i]);
 
             if outcome != Status::Passed {

@@ -98,13 +98,15 @@ impl UciInterface {
                 cur_board = Some(Board::new(&fen_tokens.join(" "), &self.engine));
             }
 
+            let mut cur_board_raw = cur_board.unwrap();
+
             if i < command.len() && command[i] == "moves" {
                 i += 1;
                 while i < command.len() {
-                    cur_board.unwrap().make_move(&self.engine, Board::lan_to_move(&command[i]));
+                    cur_board_raw.make_move(&self.engine, Board::lan_to_move(&command[i]));
 
 
-                    let board_hash = cur_board.unwrap().zobrist_hash;
+                    let board_hash = cur_board_raw.zobrist_hash;
 
                     match new_positions_reached.get(&board_hash) {
                         Some(count) => {
@@ -118,9 +120,10 @@ impl UciInterface {
                     i += 1;
                 }
             }
+            cur_board = Some(cur_board_raw);
 
         //println!("READ BOARD AS||{:?}||", cur_board);
-        *self.current_board.lock().unwrap() = cur_board;
+        *self.current_board.lock().unwrap() = cur_board.clone();
         *self.positions_reached.lock().unwrap() = new_positions_reached;
 
         Some(Cmd::Set(cur_board.unwrap()))

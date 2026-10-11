@@ -100,7 +100,7 @@ impl Engine {
             }
         } else {
             for i in kings {
-                print_bitboard_pos(board.check_full, i);
+                //print_bitboard_pos(board.check_full, i);
                 possible_king.push(self.gen_king_moves(&board, i, board.turn));
             }
         }
@@ -180,20 +180,16 @@ impl Engine {
 
             for ii in 0..moves_to.len() {
                 let to = moves_to[ii];
-                println!("S--------[{}]------------", to);
+                //println!("S--------[{}]------------", to);
 
                 //if not_check || board.check_real & (1 << to) != 0 {
                     //Not in check or to is in (check)
                     //all_moves.push(board.move_piece(to, from, &self.zobrist_keys));
                 let (cr, cf) = self.cal_check(&board, to, !board.turn, true);
-                println!("cr: {}, cf: {}, to: {}", cr, cf, to);
-                if  cr == 0 {
+                //println!("cr: {}, cf: {}, to: {}", cr, cf, to);
                     all_moves.push(Move { from: from, to: to, promote_to: None, move_type: MoveType::Move });
-                } else {
-                    board.print_board();
-                }
                 //}
-                println!("E-------------------------------------------");
+                //println!("E-------------------------------------------");
             }
         }
 
@@ -379,19 +375,9 @@ impl Engine {
 
         let hits_pos = board_serialize(hits);
 
-        if pos == 12 {
-            print_bitboard_pos(hits, pos);
-            print_bitboard_pos(attackable_check_pos, pos);
-        }
 
         for to in hits_pos {
             if (1 << to) & attackable_check_pos != 0 {
-                if pos == 12 {
-                    print_bitboard_pos((1 << to), pos);
-                    println!("{:?}", self.gen_pawn_moves_raw(&board, to, opp_color, 0xffffffffffffffff));
-                    print_bitboard(!(1 << to));
-                    print_bitboard(self.gen_pawn_moves_raw(&board, to, opp_color, 0xffffffffffffffff).1 & !(1 << to));
-                }
                 //let (_, pt) = board.lookup(to);
                 match board.lookup(to) {
                     Some ((_, pt)) => {
@@ -410,13 +396,8 @@ impl Engine {
                             PieceType::Queen => self.gen_queen_moves(&board, to, board.pieces[opp_color]),
                             PieceType::King => self.gen_king_moves(&board, to, opp_color),
                         };
-                        if pos == 11 {
-                            println!("{}, {:?}", to, opp_color);
-                            print_bitboard(1 << to);
-                            print_bitboard_pos(att, to);
-                        }
                         if (att & (1 << pos)) != 0 {
-                            println!("HITTTTTT");
+                            //println!("HITTTTTT");
                             let (cr, cf) = self.gen_check_info(&board, to, pos);
                             //TODO SET R AND F TO ONLY SAME RANK/FILE OF KING
                             check_real |= cr;

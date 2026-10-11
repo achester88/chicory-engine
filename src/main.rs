@@ -71,7 +71,7 @@ fn main() {
                     thread::spawn(move || {
                         let move_timer = Instant::now();
                         let board = { board_ref.lock().unwrap().clone() };
-                        let cal_board = board.unwrap();
+                        let mut cal_board = board.unwrap();
                         let mut positions_reached = positions_reached_ref.lock().unwrap();
                         let mut transposition_table = transposition_table_ref.lock().unwrap();
 
@@ -157,8 +157,8 @@ fn main() {
 
                         //let (_, _, board, _) = cur_best_move.unwrap(); //*best_move_lock;
                         println!("bestmove {}", Board::move_to_lan(&cur_best_move.unwrap()));
-                        board.unwrap().make_move(&eng, cur_best_move.unwrap());
-                        *board_ref.lock().unwrap() = Some(board.unwrap());
+                        cal_board.make_move(&eng, cur_best_move.unwrap());
+                        *board_ref.lock().unwrap() = Some(cal_board);
 
                         //let zh = cur_best_move.unwrap().board.zobrist_hash;
                         

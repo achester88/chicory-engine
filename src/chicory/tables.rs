@@ -70,7 +70,7 @@ impl ZobristKeys {
         }
     }
 
-    pub fn get_key(&self, board: Board) -> u64 {
+    pub fn get_key(&self, board: &Board) -> u64 {
         let mut zorb: u64 = 0;
 
         xor_board(&mut zorb, board.pawns, self.pawns);

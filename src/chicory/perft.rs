@@ -51,10 +51,11 @@ pub fn multi_perft(eng: &Engine, board: Board, depth: usize, thread_count: usize
         for n in 0..thread_count {
             let set = chunks[n].clone();
             let ctx = tx.clone();
+            let mut owned_board = board.clone();
             s.spawn(move || {
                 let mut count = 0;
     
-                let mut owned_board = board.clone();
+                //let mut owned_board = board.clone();
                 
                 for m in set {
                     owned_board.make_move(eng, m);
