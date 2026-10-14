@@ -20,11 +20,15 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
 
     let moves = eng.gen_moves(&board);
     for m in moves {
+        // println!("------[{}]------", Board::move_to_lan(&m));
         board.make_move(eng, m);
-        results.insert(
-            Board::move_to_lan(&m),
-            multi_perft(&eng, board.clone(), depth - 1, THREAD_COUNT),
-        );
+        if board.is_legal(&eng) {
+            results.insert(
+                Board::move_to_lan(&m),
+                multi_perft(&eng, board.clone(), depth - 1, THREAD_COUNT),
+            );
+        }
+        // println!("----------------------------");
         board.unmake_move(m, eng);
     }
 
@@ -300,4 +304,25 @@ fn p6_four() {
     let count = multi_perft(&engine, board, 4, THREAD_COUNT);
 
     assert_eq!(count, 3894594);
+}
+
+#[test]
+fn p3_one_string_check() {
+    let engine = Engine::new();
+    let mut board = Board::new("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", &engine);
+    let pass = perft_from_string(&engine, &mut board, String::from("e2e3: 1
+g2g3: 1
+a5a6: 1
+e2e4: 1
+g2g4: 1
+b4b1: 1
+b4b2: 1
+b4b3: 1
+b4a4: 1
+b4c4: 1
+b4d4: 1
+b4e4: 1
+b4f4: 1
+a5a4: 1"), 1);
+    assert_eq!(pass, true);
 }

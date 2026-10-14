@@ -187,7 +187,9 @@ impl Engine {
                     //all_moves.push(board.move_piece(to, from, &self.zobrist_keys));
                 let (cr, cf) = self.cal_check(&board, to, !board.turn, true);
                 //println!("cr: {}, cf: {}, to: {}", cr, cf, to);
+                if cr == 0 {
                     all_moves.push(Move { from: from, to: to, promote_to: None, move_type: MoveType::Move });
+                }
                 //}
                 //println!("E-------------------------------------------");
             }
@@ -227,6 +229,7 @@ impl Engine {
 
         all_moves
     }
+
 
     pub fn can_castle_through(&self, pos: u64, board: &Board) -> bool {
         let sq = board_serialize(pos);
@@ -385,6 +388,7 @@ impl Engine {
                             PieceType::Pawn => {
                                 if inculde_pawn_diag {
                                     //(0, self.gen_pawn_moves_raw(&board, to, opp_color, 0xffffffffffffffff).1 & !(1 << to)) //TODO replace with get pawn attacks
+                                    // print_bitboard_pos(self.pawn_attacks[opp_color as usize][to], pos);
                                     (0, self.pawn_attacks[opp_color as usize][to])
                                 } else {
                                     self.gen_pawn_moves(&board, to, opp_color)
@@ -397,7 +401,7 @@ impl Engine {
                             PieceType::King => self.gen_king_moves(&board, to, opp_color),
                         };
                         if (att & (1 << pos)) != 0 {
-                            //println!("HITTTTTT");
+                            // println!("HITTTTTT at {}", pos);
                             let (cr, cf) = self.gen_check_info(&board, to, pos);
                             //TODO SET R AND F TO ONLY SAME RANK/FILE OF KING
                             check_real |= cr;

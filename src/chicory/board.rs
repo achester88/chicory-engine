@@ -880,6 +880,18 @@ impl Board {
         return Move { from, to, promote_to, move_type: MoveType::Move };
     }
 
+   pub fn is_legal(&self, engine: &Engine) -> bool {
+        let king_pos = board_serialize(self.kings[!self.turn])[0];
+       // self.print_board();
+        let (cr, cf) = engine.cal_check(&self, king_pos, self.turn, true); 
+        //println!("{}, {}", cr, cf);
+        if cr != 0 {
+            return false;
+        }
+        
+        return true;
+   } 
+
     pub fn make_move(&mut self, engine: &Engine, move_: Move) -> bool { //returns if a capture happened
         //let mut new_board: Board;
 
