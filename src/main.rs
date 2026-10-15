@@ -199,7 +199,7 @@ fn main() {
                         let mut cal_board = board.unwrap();
 
                         let time = Instant::now();
-                        let (count, list) = multi_perft_list(&eng, &mut cal_board, depth, 8);
+                        let (count, list) = multi_perft_list(&eng, cal_board, depth, 8);
                         let stop_time = time.elapsed().as_millis();
 
                         for (moves, nodes) in list {

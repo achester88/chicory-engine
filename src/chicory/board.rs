@@ -84,7 +84,7 @@ impl Not for PieceColor {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Board {
     pub pawns: [u64; 2],
     pub bishops: [u64; 2],
@@ -106,9 +106,9 @@ pub struct Board {
     pub zobrist_hash: u64,
     pub capture: Option<PieceType>,
 
-    pub last_capture: Vec<Option<PieceType>>,
-    pub last_castling: Vec<u8>,
-    pub last_en_passant: Vec<u8>,
+    //pub last_capture: Vec<Option<PieceType>>,
+    //pub last_castling: Vec<u8>,
+    //pub last_en_passant: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -236,9 +236,9 @@ impl Board {
             occupied: wp | wb | wn | wr | wq | wk | bp | bb | bn | br | bq | bk,
             pieces: [wp | wb | wn | wr | wq | wk, bp | bb | bn | br | bq | bk],
             zobrist_hash: 0,
-            last_castling: vec![],
-            last_capture: vec![],
-            last_en_passant: vec![],
+            // last_castling: vec![],
+            // last_capture: vec![],
+            // last_en_passant: vec![],
         };
 
         let king_board = new_board.kings[new_board.turn];
@@ -343,9 +343,9 @@ impl Board {
         };
 
         
-        println!("to: {}, self.en_passant: {}", to, self.en_passant);
+        // println!("to: {}, self.en_passant: {}", to, self.en_passant);
         if to == (self.en_passant as usize) && &pt == &PieceType::Pawn {
-            println!("^^^^^^^^^^^^^");
+            // println!("^^^^^^^^^^^^^");
             if pc == PieceColor::White {
                 self.remove_piece(to-7, &PieceType::Pawn, PieceColor::Black, zobrist_keys);
             }else {
@@ -381,18 +381,18 @@ impl Board {
         let (pc, pt) = match self.lookup(to) {
             Some((old_pc, old_pt)) => { (old_pc, old_pt) },
             None => {
-                self.print_board();
-                panic!("ERROR: from: {}, from: {}", from, to);
+                //self.print_board();
+                panic!("ERROR: from: {}, to: {}", from, to);
             }
         };
 
-            println!("to: {}, self.en_passant: {}, cap: {:?}", to, self.en_passant, did_capture_occur);
+            // println!("to: {}, self.en_passant: {}, cap: {:?}", to, self.en_passant, did_capture_occur);
         match did_capture_occur {
             Some(capture_type) => {
-                println!("************");
-                println!("[ {} && {} ]", to == (self.en_passant as usize), &capture_type == &PieceType::Pawn);
+                // println!("************");
+                // println!("[ {} && {} ]", to == (self.en_passant as usize), &capture_type == &PieceType::Pawn);
             if to == (self.en_passant as usize) && &capture_type == &PieceType::Pawn {
-                println!("____________________");
+                // println!("____________________");
                 if pc == PieceColor::White {
                     self.add_piece(to-8, &PieceType::Pawn, PieceColor::Black, zobrist_keys);
                 }else {
@@ -427,7 +427,7 @@ impl Board {
         if pt == &PieceType::Pawn {
             if to == self.en_passant as usize {
                 //remove pawn at en_pass
-                println!("EP");
+                // println!("EP");
                 match self.turn {
                     PieceColor::White => {
                         self.pawns[PieceColor::Black] = self.pawns[PieceColor::Black] & !(1 << self.en_passant - 8);
@@ -927,7 +927,7 @@ impl Board {
         let king_pos = board_serialize(self.kings[!self.turn])[0];
        // self.print_board();
         let (cr, cf) = engine.cal_check(&self, king_pos, self.turn, true); 
-        //println!("{}, {}", cr, cf);
+        // println!("{}, {}", cr, cf);
         if cr != 0 {
             return false;
         }
@@ -941,11 +941,11 @@ impl Board {
         //last_castling
 
 
-        self.last_castling.push(self.castling);
-        self.last_en_passant.push(self.en_passant); 
-        self.last_capture.push(self.capture);
+        // self.last_castling.push(self.castling);
+        // self.last_en_passant.push(self.en_passant); 
+        // self.last_capture.push(self.capture);
 
-        println!("EP: {:?}", self.en_passant);
+        // println!("EP: {:?}", self.en_passant);
 
         let did_capture_occur: Option<PieceType> = match move_.move_type {
             MoveType::Move | MoveType::Capture => self.move_piece(move_.to, move_.from, &engine.zobrist_keys),
@@ -957,7 +957,7 @@ impl Board {
 
         self.capture = did_capture_occur;
 
-        println!("C: {:?}", self.capture);
+        // println!("C: {:?}", self.capture);
         /*
         if str == "O-O" {
             new_board = self.castle(80);
@@ -986,20 +986,20 @@ impl Board {
     }
 
     pub fn unmake_move(&mut self, move_: Move, engine: &Engine) -> bool {
-        println!("--UNMAKE--");
-
+        // println!("--UNMAKE--");
+        /*
         //Remove Current Castling State From Hash
         self.zobrist_hash ^= &engine.zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
         self.zobrist_hash ^= &engine.zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
 
-        println!("LC: {:?} B", self.last_capture);
+        // println!("LC: {:?} B", self.last_capture);
         let did_capture_occur = self.capture;//self.last_capture.pop().expect("Expected at least one capture state");
-        println!("LC: {:?} A", self.last_capture);
-        self.capture = self.last_capture.pop().expect("Expected at least one capture state");
-        self.castling = self.last_castling.pop().expect("Expected at least one castle");
-        println!("|||||||| B: {:?}", self.en_passant);
-        self.en_passant = self.last_en_passant.pop().expect("Expected at least one en_passant");
-        println!("|||||||| A: {:?}", self.en_passant);
+        // println!("LC: {:?} A", self.last_capture);
+        // self.capture = self.last_capture.pop().expect("Expected at least one capture state");
+        // self.castling = self.last_castling.pop().expect("Expected at least one castle");
+        // println!("|||||||| B: {:?}", self.en_passant);
+        // self.en_passant = self.last_en_passant.pop().expect("Expected at least one en_passant");
+        // println!("|||||||| A: {:?}", self.en_passant);
         //Add Current Castling State Back to Hash
         self.zobrist_hash ^= &engine.zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
         self.zobrist_hash ^= &engine.zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
@@ -1042,9 +1042,12 @@ impl Board {
         }
 
         
-        println!("END LEP: {:?}, self.en_passant: {:?}", self.last_en_passant, self.en_passant);
+        // println!("END LEP: {:?}, self.en_passant: {:?}", self.last_en_passant, self.en_passant);
 
         return did_capture_occur.is_some();
+        */
+        
+        false
     }
 
     #[allow(dead_code)]

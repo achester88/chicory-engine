@@ -123,7 +123,7 @@ impl UciInterface {
             cur_board = Some(cur_board_raw);
 
         //println!("READ BOARD AS||{:?}||", cur_board);
-        *self.current_board.lock().unwrap() = cur_board.clone();
+        *self.current_board.lock().unwrap() = cur_board;
         *self.positions_reached.lock().unwrap() = new_positions_reached;
 
         Some(Cmd::Set(cur_board.unwrap()))

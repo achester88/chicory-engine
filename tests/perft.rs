@@ -20,19 +20,20 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
 
     let moves = eng.gen_moves(&board);
     let init_zh = board.zobrist_hash;
-    println!("{:?}", board);
+    // println!("{:?}", board);
     for m in moves {
-        println!("------[{}({}, {})]------", Board::move_to_lan(&m), &m.to, &m.from);
-        println!("");
-        board.make_move(eng, m);
+        // println!("------[{}({}, {})]------", Board::move_to_lan(&m), &m.to, &m.from);
+        // println!("");
+        let mut new_board = board.clone();
+        new_board.make_move(eng, m);
         //board.print_board();
-        if board.is_legal(&eng) {
+        if new_board.is_legal(&eng) {
             results.insert(
                 Board::move_to_lan(&m),
-                multi_perft(&eng, board.clone(), depth - 1, THREAD_COUNT),
+                multi_perft(&eng, new_board.clone(), depth - 1, THREAD_COUNT),
             );
         }
-        board.unmake_move(m, eng);
+        //board.unmake_move(m, eng);
         if board.zobrist_hash != init_zh {
             println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             println!("Move: {:?}", Board::move_to_lan(&m));
@@ -42,7 +43,7 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
             panic!("Board was not returned to initial state");
             println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         }
-        println!("----------------------------E");
+        // println!("----------------------------E");
     }
 
     let mut pass = true;
