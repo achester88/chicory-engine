@@ -19,17 +19,30 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
     }
 
     let moves = eng.gen_moves(&board);
+    let init_zh = board.zobrist_hash;
+    println!("{:?}", board);
     for m in moves {
-        // println!("------[{}]------", Board::move_to_lan(&m));
+        println!("------[{}({}, {})]------", Board::move_to_lan(&m), &m.to, &m.from);
+        println!("");
         board.make_move(eng, m);
+        //board.print_board();
         if board.is_legal(&eng) {
             results.insert(
                 Board::move_to_lan(&m),
                 multi_perft(&eng, board.clone(), depth - 1, THREAD_COUNT),
             );
         }
-        // println!("----------------------------");
         board.unmake_move(m, eng);
+        if board.zobrist_hash != init_zh {
+            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            println!("Move: {:?}", Board::move_to_lan(&m));
+            board.print_board();
+            println!("----");
+            println!("{:?}", board);
+            panic!("Board was not returned to initial state");
+            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        }
+        println!("----------------------------E");
     }
 
     let mut pass = true;
@@ -307,22 +320,47 @@ fn p6_four() {
 }
 
 #[test]
-fn p3_one_string_check() {
+fn p3_two_string_check() {
     let engine = Engine::new();
     let mut board = Board::new("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", &engine);
-    let pass = perft_from_string(&engine, &mut board, String::from("e2e3: 1
-g2g3: 1
-a5a6: 1
-e2e4: 1
-g2g4: 1
-b4b1: 1
-b4b2: 1
-b4b3: 1
-b4a4: 1
-b4c4: 1
-b4d4: 1
-b4e4: 1
-b4f4: 1
-a5a4: 1"), 1);
+    let pass = perft_from_string(&engine, &mut board, String::from("e2e3: 15
+g2g3: 4
+a5a6: 15
+e2e4: 16
+g2g4: 17
+b4b1: 16
+b4b2: 16
+b4b3: 15
+b4a4: 15
+b4c4: 15
+b4d4: 15
+b4e4: 15
+b4f4: 2
+a5a4: 15"), 2);
+    assert_eq!(pass, true);
+}
+
+#[test]
+fn p3_two_one_string_check() {
+    let engine = Engine::new();
+    let mut board = Board::new("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", &engine);
+    board.make_move(&engine, Board::lan_to_move("e2e4"));
+    board.print_board();
+    let pass = perft_from_string(&engine, &mut board, String::from("f4f3: 1
+d6d5: 1
+c7c6: 1
+c7c5: 1
+h5b5: 1
+h5c5: 1
+h5d5: 1
+h5e5: 1
+h5f5: 1
+h5g5: 1
+h5h6: 1
+h5h7: 1
+h5h8: 1
+h4g3: 1
+h4g5: 1
+h4g4: 1"), 1);
     assert_eq!(pass, true);
 }

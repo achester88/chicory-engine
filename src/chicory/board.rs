@@ -104,6 +104,7 @@ pub struct Board {
     pub occupied: u64,
     pub pieces: [u64; 2], //All piece of the same color,
     pub zobrist_hash: u64,
+    pub capture: Option<PieceType>,
 
     pub last_capture: Vec<Option<PieceType>>,
     pub last_castling: Vec<u8>,
@@ -228,6 +229,7 @@ impl Board {
             castling: 0b1111_0000 | castling,
             check_real: 0,
             check_full: 0,
+            capture: None,
             en_passant: ep,
             half_moves: hm,
             full_move: fm,
@@ -288,14 +290,13 @@ impl Board {
 
     pub fn move_piece(&mut self, to: usize, from: usize, zobrist_keys: &ZobristKeys) -> Option<PieceType> {
 
-        let (pc, pt) = self.lookup(from).unwrap(); //To piece should always be there
+        let (pc, pt) = self.lookup(from).unwrap(); //From piece should always be there
 
         //Remove Current Castling State From Hash
         self.zobrist_hash ^= zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
         self.zobrist_hash ^= zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
 
         //Check if en_passant needs updating
-        self.en_passant_check(to, from, &pt, zobrist_keys);
 
         //CHECK FOR CHECK
         if self.castling != 0 && (pt == PieceType::Rook || pt == PieceType::King) {
@@ -331,7 +332,7 @@ impl Board {
             }
         }
 
-        let capture = match self.lookup(to) {
+        let mut capture = match self.lookup(to) {
             Some((old_pc, old_pt)) => {
                 self.remove_castling(to, old_pt);
                 self.remove_piece(to, &old_pt, old_pc, zobrist_keys);
@@ -340,6 +341,21 @@ impl Board {
             },
             None =>  None
         };
+
+        
+        println!("to: {}, self.en_passant: {}", to, self.en_passant);
+        if to == (self.en_passant as usize) && &pt == &PieceType::Pawn {
+            println!("^^^^^^^^^^^^^");
+            if pc == PieceColor::White {
+                self.remove_piece(to-7, &PieceType::Pawn, PieceColor::Black, zobrist_keys);
+            }else {
+                self.remove_piece(to+7, &PieceType::Pawn, PieceColor::White, zobrist_keys);
+            }
+            capture = Some(PieceType::Pawn);
+        }
+
+
+        self.en_passant_check(to, from, &pt, zobrist_keys);
 
         //Remove from pos piece
         self.remove_piece(from, &pt, pc, zobrist_keys);
@@ -370,9 +386,22 @@ impl Board {
             }
         };
 
+            println!("to: {}, self.en_passant: {}, cap: {:?}", to, self.en_passant, did_capture_occur);
         match did_capture_occur {
             Some(capture_type) => {
+                println!("************");
+                println!("[ {} && {} ]", to == (self.en_passant as usize), &capture_type == &PieceType::Pawn);
+            if to == (self.en_passant as usize) && &capture_type == &PieceType::Pawn {
+                println!("____________________");
+                if pc == PieceColor::White {
+                    self.add_piece(to-8, &PieceType::Pawn, PieceColor::Black, zobrist_keys);
+                }else {
+                    self.add_piece(to+8, &PieceType::Pawn, PieceColor::White, zobrist_keys);
+                }
+            }
+            else {
                 self.add_piece(to, &did_capture_occur.unwrap(), !pc, zobrist_keys);
+            }
                 //self.remove_piece(to, &did_capture_occur.unwrap(), !pc, zobrist_keys);
             },
             None => {}
@@ -385,7 +414,7 @@ impl Board {
 
         self.recalc_board();
 
-        self.next_turn(zobrist_keys);
+        self.untake_turn(zobrist_keys);
 
 
 
@@ -398,6 +427,7 @@ impl Board {
         if pt == &PieceType::Pawn {
             if to == self.en_passant as usize {
                 //remove pawn at en_pass
+                println!("EP");
                 match self.turn {
                     PieceColor::White => {
                         self.pawns[PieceColor::Black] = self.pawns[PieceColor::Black] & !(1 << self.en_passant - 8);
@@ -605,7 +635,7 @@ impl Board {
         }
 
 
-        self.next_turn(zobrist_keys);
+        self.untake_turn(zobrist_keys);
 
         self.add_piece(from, &PieceType::Pawn, pc, zobrist_keys);
 
@@ -717,7 +747,7 @@ impl Board {
         let rook_to_pos: usize;
 
         match self.turn {
-            PieceColor::White => {
+            PieceColor::Black => { //Flip turns (if white's turn last move was for black)
                 king_from_pos = 4;
                 if code == 88 { //Queenside
                     rook_from_pos = 0;
@@ -733,7 +763,7 @@ impl Board {
 
                 self.castling &= 0b0011;
             }
-            PieceColor::Black => {
+            PieceColor::White => {
                 king_from_pos = 60;
                 if code == 88 {
                     rook_from_pos = 56;
@@ -752,15 +782,15 @@ impl Board {
         }
 
 
-        self.remove_piece(king_to_pos, &PieceType::King, self.turn, zobrist_keys);
-        self.remove_piece(rook_to_pos, &PieceType::Rook, self.turn, zobrist_keys);
+        self.remove_piece(king_to_pos, &PieceType::King, !self.turn, zobrist_keys);
+        self.remove_piece(rook_to_pos, &PieceType::Rook, !self.turn, zobrist_keys);
 
-        self.add_piece(king_from_pos, &PieceType::King, self.turn, zobrist_keys);
-        self.add_piece(rook_from_pos, &PieceType::Rook, self.turn, zobrist_keys);
+        self.add_piece(king_from_pos, &PieceType::King, !self.turn, zobrist_keys);
+        self.add_piece(rook_from_pos, &PieceType::Rook, !self.turn, zobrist_keys);
 
         self.recalc_board();
 
-        self.next_turn(zobrist_keys);
+        self.untake_turn(zobrist_keys);
 
         //new_board
         //Move{from: code as usize, to: code as usize, board: new_board, promote_to: None, capture: false}
@@ -778,6 +808,19 @@ impl Board {
         self.zobrist_hash ^= zobrist_keys.black_turn;
 
         self.half_moves = self.half_moves + 1;
+    }
+
+    fn untake_turn(&mut self, zobrist_keys: &ZobristKeys) {
+        if self.turn == PieceColor::White {
+            self.turn = PieceColor::Black;
+            self.full_move -= 1;
+        } else {
+            self.turn = PieceColor::White;
+        };
+
+        self.zobrist_hash ^= zobrist_keys.black_turn;
+
+        self.half_moves = self.half_moves - 1;
     }
 
     pub fn lan_to_pos(code: &str) -> usize {
@@ -897,6 +940,13 @@ impl Board {
 
         //last_castling
 
+
+        self.last_castling.push(self.castling);
+        self.last_en_passant.push(self.en_passant); 
+        self.last_capture.push(self.capture);
+
+        println!("EP: {:?}", self.en_passant);
+
         let did_capture_occur: Option<PieceType> = match move_.move_type {
             MoveType::Move | MoveType::Capture => self.move_piece(move_.to, move_.from, &engine.zobrist_keys),
             MoveType::CastleKingSide => self.castle(80, &engine.zobrist_keys),
@@ -905,6 +955,9 @@ impl Board {
 
         };
 
+        self.capture = did_capture_occur;
+
+        println!("C: {:?}", self.capture);
         /*
         if str == "O-O" {
             new_board = self.castle(80);
@@ -929,31 +982,29 @@ impl Board {
             self.check_real = 0;
             self.check_full = 0;
         }
-
-        self.last_capture.push(did_capture_occur);
-        self.last_castling.push(self.castling);
-        self.last_en_passant.push(self.en_passant);
-
         return did_capture_occur.is_some();
     }
 
     pub fn unmake_move(&mut self, move_: Move, engine: &Engine) -> bool {
-
-
-        let did_capture_occur = self.last_capture.pop().expect("Expected at least one capture state");
+        println!("--UNMAKE--");
 
         //Remove Current Castling State From Hash
         self.zobrist_hash ^= &engine.zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
         self.zobrist_hash ^= &engine.zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
 
+        println!("LC: {:?} B", self.last_capture);
+        let did_capture_occur = self.capture;//self.last_capture.pop().expect("Expected at least one capture state");
+        println!("LC: {:?} A", self.last_capture);
+        self.capture = self.last_capture.pop().expect("Expected at least one capture state");
         self.castling = self.last_castling.pop().expect("Expected at least one castle");
-
+        println!("|||||||| B: {:?}", self.en_passant);
+        self.en_passant = self.last_en_passant.pop().expect("Expected at least one en_passant");
+        println!("|||||||| A: {:?}", self.en_passant);
         //Add Current Castling State Back to Hash
         self.zobrist_hash ^= &engine.zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
         self.zobrist_hash ^= &engine.zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
 
-        self.en_passant = self.last_en_passant.pop().expect("Expected at least one en_passant");
-
+        
         match move_.move_type {
             MoveType::Move | MoveType::Capture => self.unmove_piece(move_.to, move_.from, &engine.zobrist_keys, did_capture_occur),
             MoveType::CastleKingSide => self.uncastle(80, &engine.zobrist_keys),
@@ -962,7 +1013,9 @@ impl Board {
 
         };
 
+
         /*
+        let did_capture_occur = self.last_capture.pop().expect("Expected at least one capture state");
         if str == "O-O" {
             new_board = self.castle(80);
         } else if str == "O-O-O" {
@@ -987,6 +1040,9 @@ impl Board {
             self.check_real = 0;
             self.check_full = 0;
         }
+
+        
+        println!("END LEP: {:?}, self.en_passant: {:?}", self.last_en_passant, self.en_passant);
 
         return did_capture_occur.is_some();
     }

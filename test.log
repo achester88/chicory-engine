@@ -1,0 +1,604 @@
+   Compiling chicory v1.0.3 (/home/achester88/Projects/chicory)
+warning: unnecessary parentheses around assigned value
+   --> src/chicory/engine.rs:291:23
+    |
+291 |         let attacks = (self.king_attacks[sq] & (!board.occupied | opp)) ;
+    |                       ^                                               ^
+    |
+    = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+    |
+291 -         let attacks = (self.king_attacks[sq] & (!board.occupied | opp)) ;
+291 +         let attacks = self.king_attacks[sq] & (!board.occupied | opp) ;
+    |
+
+warning: unnecessary parentheses around `if` condition
+   --> src/chicory/perft.rs:107:11
+    |
+107 |         if(board.is_legal(&eng)) {
+    |           ^                    ^
+    |
+help: remove these parentheses
+    |
+107 -         if(board.is_legal(&eng)) {
+107 +         if board.is_legal(&eng) {
+    |
+
+warning: unused variable: `capture_type`
+   --> src/chicory/board.rs:374:18
+    |
+374 |             Some(capture_type) => {
+    |                  ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_capture_type`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `out`
+   --> src/chicory/board.rs:584:17
+    |
+584 |         let mut out: Vec<Move> = vec![];
+    |                 ^^^ help: if this is intentional, prefix it with an underscore: `_out`
+
+warning: variable does not need to be mutable
+   --> src/chicory/board.rs:584:13
+    |
+584 |         let mut out: Vec<Move> = vec![];
+    |             ----^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `capture_type`
+   --> src/chicory/board.rs:600:18
+    |
+600 |             Some(capture_type) => {
+    |                  ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_capture_type`
+
+warning: unused variable: `capture`
+   --> src/chicory/board.rs:849:17
+    |
+849 |         let mut capture = false;
+    |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_capture`
+
+warning: unused variable: `new_move`
+   --> src/chicory/board.rs:851:17
+    |
+851 |         let mut new_move: Move;
+    |                 ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_new_move`
+
+warning: variable does not need to be mutable
+   --> src/chicory/board.rs:846:13
+    |
+846 |         let mut from: usize;
+    |             ----^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/chicory/board.rs:847:13
+    |
+847 |         let mut to: usize;
+    |             ----^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/chicory/board.rs:849:13
+    |
+849 |         let mut capture = false;
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `cf`
+   --> src/chicory/board.rs:899:18
+    |
+899 |         let (cr, cf) = engine.cal_check(&self, king_pos, self.turn, true); 
+    |                  ^^ help: if this is intentional, prefix it with an underscore: `_cf`
+
+warning: unused variable: `king_pos`
+   --> src/chicory/engine.rs:157:13
+    |
+157 |         let king_pos = board_serialize(board.kings[!board.turn]);
+    |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_king_pos`
+
+warning: unused variable: `cf`
+   --> src/chicory/engine.rs:188:26
+    |
+188 |                 let (cr, cf) = self.cal_check(&board, to, !board.turn, true);
+    |                          ^^ help: if this is intentional, prefix it with an underscore: `_cf`
+
+warning: `chicory` (lib test) generated 14 warnings (run `cargo fix --lib -p chicory --tests` to apply 6 suggestions)
+warning: `chicory` (lib) generated 14 warnings (14 duplicates)
+warning: unnecessary parentheses around method argument
+  --> tests/common.rs:20:21
+   |
+20 |         boards.push((OldMove{from, to: *to, board: Board::new(fen, eng), promote_to: None, capture: false}));
+   |                     ^                                                                                     ^
+   |
+   = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+   |
+20 -         boards.push((OldMove{from, to: *to, board: Board::new(fen, eng), promote_to: None, capture: false}));
+20 +         boards.push(OldMove{from, to: *to, board: Board::new(fen, eng), promote_to: None, capture: false});
+   |
+
+warning: unused import: `chicory::chicory::tables::ZobristKeys`
+ --> tests/others.rs:3:5
+  |
+3 | use chicory::chicory::tables::ZobristKeys;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `Move`
+ --> tests/fen_moves.rs:1:38
+  |
+1 | use chicory::chicory::board::{Board, Move};
+  |                                      ^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: variable does not need to be mutable
+  --> tests/fen_moves.rs:12:9
+   |
+12 |     let mut moves = eng.gen_moves(&board);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: variable does not need to be mutable
+  --> tests/fen_moves.rs:33:9
+   |
+33 |     let mut moves = eng.gen_moves(&board);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> tests/fen_moves.rs:59:9
+   |
+59 |     let mut moves = eng.gen_moves(&board);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/fen_moves.rs:116:9
+    |
+116 |     let mut moves = eng.gen_moves(&board);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/fen_moves.rs:136:9
+    |
+136 |     let mut moves = eng.gen_moves(&board);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/fen_moves.rs:158:9
+    |
+158 |     let mut moves = eng.gen_moves(&board);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/fen_moves.rs:180:9
+    |
+180 |     let mut moves = eng.gen_moves(&board);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/fen_moves.rs:221:9
+    |
+221 |     let mut moves = eng.gen_moves(&board);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/fen_moves.rs:319:9
+    |
+319 |     let mut next_moves = eng.gen_moves(&moves[0].board);
+    |         ----^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: `chicory` (test "common") generated 1 warning (run `cargo fix --test "common"` to apply 1 suggestion)
+warning: `chicory` (test "others") generated 1 warning (run `cargo fix --test "others"` to apply 1 suggestion)
+warning: `chicory` (test "fen_moves") generated 11 warnings (1 duplicate) (run `cargo fix --test "fen_moves"` to apply 10 suggestions)
+warning: variant `Capture` is never constructed
+   --> src/chicory/board.rs:115:5
+    |
+114 | pub enum MoveType {
+    |          -------- variant in this enum
+115 |     Capture,
+    |     ^^^^^^^
+    |
+    = note: `MoveType` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` on by default
+
+warning: field `ancient` is never read
+  --> src/chicory/tables.rs:18:9
+   |
+13 | pub struct Entry {
+   |            ----- field in this struct
+...
+18 |     pub ancient: bool,
+   |         ^^^^^^^
+
+warning: `chicory` (bin "chicory" test) generated 16 warnings (14 duplicates)
+warning: `chicory` (bin "chicory") generated 16 warnings (16 duplicates)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.31s
+     Running unittests src/lib.rs (target/debug/deps/chicory-21b3346c8988e8e4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/chicory-ba991d85b5289b49)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/suite.rs (target/debug/deps/suite-92053a289fcf062b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/common.rs (target/debug/deps/common-4a8b32e0210b3c2b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fen_moves.rs (target/debug/deps/fen_moves-dc012b5c59d58c8f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/gen_moves.rs (target/debug/deps/gen_moves-30d4eeb0a914cfae)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.00s
+
+     Running tests/others.rs (target/debug/deps/others-e59d25a018d731eb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/perft.rs (target/debug/deps/perft-c255c26b471686a5)
+
+running 1 test
+test p3_two_string_check ... FAILED
+
+failures:
+
+---- p3_two_string_check stdout ----
+------[b4b1(1, 25)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[b4b2(9, 25)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[b4b3(17, 25)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[b4a4(24, 25)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[b4c4(26, 25)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[b4d4(27, 25)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[b4e4(28, 25)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[b4f4(29, 25)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[e2e3(20, 12)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[e2e4(28, 12)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[g2g3(22, 14)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . # . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[g2g4(30, 14)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[b5b6(41, 33)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . # . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[a5a4(24, 32)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: QK qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+------[a5a6(40, 32)]------
+
+White to move:
+-----
+. . . . . . . . 
+. . p . . . . . 
+. . . p . . . . 
+K P . . . . . r 
+. R . . . p . k 
+. . . . . . . . 
+. . . . P . P . 
+. . . . . . . . 
+-----
+Castling Rights: -- --
+Temp Castling Rights: -- qk
+Halfmoves: 0
+Fullmoves: 1
+
+----------------------------
+b4e4 | ==
+b4b3 | ==
+b4b2 | ==
+b4a4 | ==
+g2g3 | ==
+e2e3 | ==
+e2e4 | E: 16, R: 17
+b4c4 | ==
+b4d4 | ==
+g2g4 | E: 17, R: 18
+a5a4 | ==
+b4f4 | ==
+a5a6 | ==
+b4b1 | ==
+
+thread 'p3_two_string_check' panicked at tests/perft.rs:328:5:
+assertion `left == right` failed
+  left: false
+ right: true
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    p3_two_string_check
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--test perft`

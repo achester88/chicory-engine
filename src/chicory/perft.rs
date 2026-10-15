@@ -27,6 +27,7 @@ pub fn perft(eng: &Engine, board: &mut Board, depth: usize) -> usize {
 }
 #[allow(dead_code)]
 pub fn multi_perft(eng: &Engine, board: Board, depth: usize, thread_count: usize) -> usize {
+    //println!("D: {}", depth);
     if depth == 0 {
         return 1;
     }
