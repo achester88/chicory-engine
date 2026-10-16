@@ -195,38 +195,6 @@ impl Engine {
             }
         }
 
-        //Calcs check
-        /*
-        let mut i = 0;
-
-        while i < all_moves.len() {
-            let new_board = &mut all_moves[i].board;
-
-            //enemy check
-            if king_pos.len() > 0 {
-                let (cr, cf) = self.cal_check(new_board, king_pos[0], board.turn);
-                new_board.check_real = cr;
-                new_board.check_full = cf;
-            } else {
-                new_board.check_real = 0;
-                new_board.check_full = 0;
-            }
-
-            //self check
-            let self_king_pos = board_serialize(new_board.kings[board.turn]);
-            if self_king_pos.len() > 0 {
-                //let self_king_pos = board_serialize(new_board.kings[board.turn]);
-                if self.cal_check(&new_board, self_king_pos[0], !board.turn) != (0, 0) {
-                    all_moves.remove(i);
-                } else {
-                    i += 1;
-                }
-            } else {
-                i += 1;
-            }
-        }
-        */
-
         all_moves
     }
 

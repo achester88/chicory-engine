@@ -109,6 +109,7 @@ pub struct Board {
     pub last_capture: Vec<Option<PieceType>>,
     pub last_castling: Vec<u8>,
     pub last_en_passant: Vec<u8>,
+    pub last_check_info: Vec<(u64, u64)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -239,6 +240,7 @@ impl Board {
             last_castling: vec![],
             last_capture: vec![],
             last_en_passant: vec![],
+            last_check_info: vec![],
         };
 
         let king_board = new_board.kings[new_board.turn];
@@ -816,21 +818,6 @@ impl Board {
     }
 
     pub fn move_to_lan(cur_move: &Move) -> String {
-        //let (Move{from, to, board: new_board, promote_to: promo_type, _}) = cur_move;
-
-        /*
-        if cur_move.to == 80 {
-            return match !cur_move.board.turn {
-                PieceColor::White => String::from("e1g1"),
-                PieceColor::Black => String::from("e8g8"),
-            };
-        } else if cur_move.to == 88 {
-            return match !cur_move.board.turn {
-                PieceColor::White => String::from("e1c1"),
-                PieceColor::Black => String::from("e8c8"),
-            };
-        }
-        */
 
         let promo_to = match cur_move.promote_to {
             Some(x) => match x {
@@ -873,35 +860,12 @@ impl Board {
                 move_type: MoveType::Promotion
             }
         }
-        /*
-        else {
-
-            if str == "e1g1" && self.kings[PieceColor::White] & 0x10 != 0 {
-                return self.castle(80, &engine.zobrist_keys);
-            } else if  str == "e1c1" && self.kings[PieceColor::White] & 0x10 != 0 {
-                new_move = self.castle(88, &engine.zobrist_keys);
-            } else if str == "e8g8" && self.kings[PieceColor::Black] & 0x1000000000000000 != 0 {
-                new_move = self.castle(80, &engine.zobrist_keys);
-            } else if  str == "e8c8" && self.kings[PieceColor::Black] & 0x1000000000000000 != 0 {
-                new_move = self.castle(88, &engine.zobrist_keys);
-            } else {
-                new_move = self.move_piece(to, from, &engine.zobrist_keys);
-            }
-
-            //"e1c1" | "e8c8" //=> self.castle(88, &engine.zobrist_keys),
-
-
-        }
-        */
-
-        return Move { from, to, promote_to, move_type: MoveType::Move };
+          return Move { from, to, promote_to, move_type: MoveType::Move };
     }
 
    pub fn is_legal(&self, engine: &Engine) -> bool {
         let king_pos = board_serialize(self.kings[!self.turn])[0];
-       // self.print_board();
         let (cr, cf) = engine.cal_check(&self, king_pos, self.turn, true); 
-        //println!("{}, {}", cr, cf);
         if cr != 0 {
             return false;
         }
@@ -910,40 +874,19 @@ impl Board {
    } 
 
     pub fn make_move(&mut self, engine: &Engine, move_: Move) -> bool { //returns if a capture happened
-        //let mut new_board: Board;
-
-        //last_castling
-
-
         self.last_castling.push(self.castling);
         self.last_en_passant.push(self.en_passant); 
         self.last_capture.push(self.capture);
-
+        self.last_check_info.push((self.check_real, self.check_full));
 
         let did_capture_occur: Option<PieceType> = match move_.move_type {
             MoveType::Move | MoveType::Capture => self.move_piece(move_.to, move_.from, &engine.zobrist_keys),
             MoveType::CastleKingSide => self.castle(80, &engine.zobrist_keys),
             MoveType::CastleQueenSide => self.castle(88, &engine.zobrist_keys),
             MoveType::Promotion => self.promote(move_.from, move_.to, move_.promote_to.unwrap(), &engine.zobrist_keys),
-
         };
 
         self.capture = did_capture_occur;
-
-        /*
-        if str == "O-O" {
-            new_board = self.castle(80);
-        } else if str == "O-O-O" {
-            new_board = self.castle(88);
-        } else {
-            let from = Board::lan_to_pos(&str[0..2]);
-            let to = Board::lan_to_pos(&str[2..4]);
-            new_board = self.move_piece(to, from);
-        }
-        */
-
-
-
 
         if self.kings[self.turn] != 0 {
             let king_pos = board_serialize(self.kings[self.turn]);
@@ -975,7 +918,6 @@ impl Board {
         self.zobrist_hash ^= &engine.zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
         self.zobrist_hash ^= &engine.zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
 
-        
         match move_.move_type {
             MoveType::Move | MoveType::Capture => self.unmove_piece(move_.to, move_.from, &engine.zobrist_keys, did_capture_occur),
             MoveType::CastleKingSide => self.uncastle(80, &engine.zobrist_keys),
@@ -988,23 +930,10 @@ impl Board {
            self.zobrist_hash ^= engine.zobrist_keys.en_passant[self.en_passant as usize];
         }
 
+        let (cr, cf) = self.last_check_info.pop().expect("Expected at least one Check Info");
+        self.check_full = cf;
+        self.check_real = cr;
         /*
-        let did_capture_occur = self.last_capture.pop().expect("Expected at least one capture state");
-        if str == "O-O" {
-            new_board = self.castle(80);
-        } else if str == "O-O-O" {
-            new_board = self.castle(88);
-        } else {
-            let from = Board::lan_to_pos(&str[0..2]);
-            let to = Board::lan_to_pos(&str[2..4]);
-            new_board = self.move_piece(to, from);
-        }
-        */
-
-
-
-
-
         if self.kings[self.turn] != 0 {
             let king_pos = board_serialize(self.kings[self.turn]);
             let (cr, cf) = engine.cal_check(&self, king_pos[0], !self.turn, false);
@@ -1014,6 +943,7 @@ impl Board {
             self.check_real = 0;
             self.check_full = 0;
         }
+        */
 
 
         return did_capture_occur.is_some();
