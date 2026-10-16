@@ -13,12 +13,15 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
     let mut expected: HashMap<String, usize> = HashMap::new();
     let mut results: HashMap<String, usize> = HashMap::new();
 
+    let mut init_board = board.clone();
+
     for line in lines {
         let parts: Vec<&str> = line.split(": ").collect();
         expected.insert(parts[0].to_string(), parts[1].parse::<usize>().unwrap());
     }
 
     let moves = eng.gen_moves(&board);
+    println!("{:?}", moves);
     let init_zh = board.zobrist_hash;
     println!("{:?}", board);
     for m in moves {
@@ -38,7 +41,7 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
             println!("Move: {:?}", Board::move_to_lan(&m));
             board.print_board();
             println!("----");
-            println!("{:?}", board);
+            assert_eq!(&mut init_board, board);
             panic!("Board was not returned to initial state");
             println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         }

@@ -374,6 +374,10 @@ impl Board {
                 println!("REST set 65");
             }
         } else {
+            if self.en_passant != 65 {
+                println!("REST");
+                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
+            }
             self.en_passant = 65;
         }
 
@@ -564,7 +568,7 @@ impl Board {
         self.remove_piece(from, &PieceType::Pawn, pc, zobrist_keys);
 
         if self.en_passant != 65 {
-            self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
+            //self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
             self.en_passant = 65;
         }
         //new_board.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
@@ -695,7 +699,7 @@ impl Board {
         }
 
         if self.en_passant != 65 {
-            self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
+            //self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
             self.en_passant = 65;
         }
 
@@ -972,7 +976,7 @@ impl Board {
         self.zobrist_hash ^= &engine.zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
 
         if self.en_passant != 65 {
-            self.zobrist_hash ^= engine.zobrist_keys.en_passant[self.en_passant as usize];
+           self.zobrist_hash ^= engine.zobrist_keys.en_passant[self.en_passant as usize];
         }
 
         println!("LC: {:?} B", self.last_capture);
@@ -997,7 +1001,8 @@ impl Board {
         };
 
         if self.en_passant != 65 {
-            self.zobrist_hash ^= engine.zobrist_keys.en_passant[self.en_passant as usize];
+            println!("C: {:?}", self.en_passant);
+           self.zobrist_hash ^= engine.zobrist_keys.en_passant[self.en_passant as usize];
         }
 
         /*
