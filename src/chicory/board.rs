@@ -343,11 +343,9 @@ impl Board {
         };
 
         
-        println!("to: {}, self.en_passant: {}", to, self.en_passant);
 
         if &pt == &PieceType::Pawn {
             if to == (self.en_passant as usize) {
-                println!("^^^^^^^^^^^^^");
                 if pc == PieceColor::White {
                     self.remove_piece(to - 8, &PieceType::Pawn, PieceColor::Black, zobrist_keys);
                 } else {
@@ -357,7 +355,6 @@ impl Board {
             }
 
             if self.en_passant != 65 {
-                println!("REST");
                 self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
             }
 
@@ -371,11 +368,9 @@ impl Board {
                 self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
             } else {
                 self.en_passant = 65;
-                println!("REST set 65");
             }
         } else {
             if self.en_passant != 65 {
-                println!("REST");
                 self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
             }
             self.en_passant = 65;
@@ -410,13 +405,9 @@ impl Board {
             }
         };
 
-            println!("to: {}, self.en_passant: {}, cap: {:?}", to, self.en_passant, did_capture_occur);
         match did_capture_occur {
             Some(capture_type) => {
-                println!("************");
-                println!("[ {} && {} ]", to == (self.en_passant as usize), &capture_type == &PieceType::Pawn);
             if to == (self.en_passant as usize) && &capture_type == &PieceType::Pawn {
-                println!("____________________");
                 if pc == PieceColor::White {
                     self.add_piece(to-8, &PieceType::Pawn, PieceColor::Black, zobrist_keys);
                 }else {
@@ -928,7 +919,6 @@ impl Board {
         self.last_en_passant.push(self.en_passant); 
         self.last_capture.push(self.capture);
 
-        println!("EP: {:?}", self.en_passant);
 
         let did_capture_occur: Option<PieceType> = match move_.move_type {
             MoveType::Move | MoveType::Capture => self.move_piece(move_.to, move_.from, &engine.zobrist_keys),
@@ -940,7 +930,6 @@ impl Board {
 
         self.capture = did_capture_occur;
 
-        println!("C: {:?}", self.capture);
         /*
         if str == "O-O" {
             new_board = self.castle(80);
@@ -969,7 +958,6 @@ impl Board {
     }
 
     pub fn unmake_move(&mut self, move_: Move, engine: &Engine) -> bool {
-        println!("--UNMAKE--");
 
         //Remove Current Castling State From Hash
         self.zobrist_hash ^= &engine.zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
@@ -979,14 +967,10 @@ impl Board {
            self.zobrist_hash ^= engine.zobrist_keys.en_passant[self.en_passant as usize];
         }
 
-        println!("LC: {:?} B", self.last_capture);
         let did_capture_occur = self.capture;//self.last_capture.pop().expect("Expected at least one capture state");
-        println!("LC: {:?} A", self.last_capture);
         self.capture = self.last_capture.pop().expect("Expected at least one capture state");
         self.castling = self.last_castling.pop().expect("Expected at least one castle");
-        println!("|||||||| B: {:?}", self.en_passant);
         self.en_passant = self.last_en_passant.pop().expect("Expected at least one en_passant");
-        println!("|||||||| A: {:?}", self.en_passant);
         //Add Current Castling State Back to Hash
         self.zobrist_hash ^= &engine.zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
         self.zobrist_hash ^= &engine.zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
@@ -1001,7 +985,6 @@ impl Board {
         };
 
         if self.en_passant != 65 {
-            println!("C: {:?}", self.en_passant);
            self.zobrist_hash ^= engine.zobrist_keys.en_passant[self.en_passant as usize];
         }
 
@@ -1032,8 +1015,6 @@ impl Board {
             self.check_full = 0;
         }
 
-        
-        println!("END LEP: {:?}, self.en_passant: {:?}", self.last_en_passant, self.en_passant);
 
         return did_capture_occur.is_some();
     }
