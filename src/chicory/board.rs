@@ -344,18 +344,38 @@ impl Board {
 
         
         println!("to: {}, self.en_passant: {}", to, self.en_passant);
-        if to == (self.en_passant as usize) && &pt == &PieceType::Pawn {
-            println!("^^^^^^^^^^^^^");
-            if pc == PieceColor::White {
-                self.remove_piece(to-7, &PieceType::Pawn, PieceColor::Black, zobrist_keys);
-            }else {
-                self.remove_piece(to+7, &PieceType::Pawn, PieceColor::White, zobrist_keys);
+
+        if &pt == &PieceType::Pawn {
+            if to == (self.en_passant as usize) {
+                println!("^^^^^^^^^^^^^");
+                if pc == PieceColor::White {
+                    self.remove_piece(to - 8, &PieceType::Pawn, PieceColor::Black, zobrist_keys);
+                } else {
+                    self.remove_piece(to + 8, &PieceType::Pawn, PieceColor::White, zobrist_keys);
+                }
+                capture = Some(PieceType::Pawn);
             }
-            capture = Some(PieceType::Pawn);
+
+            if self.en_passant != 65 {
+                println!("REST");
+                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
+            }
+
+            if to > 16 && (to - 16) == from && from > 7 && from < 16 {
+                //white
+                self.en_passant = (to as u8) - 8; //south_one
+                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
+            } else if to < 48 && (to + 16) == from && from > 47 && from < 56 {
+                //black
+                self.en_passant = (to as u8) + 8; //north_one
+                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
+            } else {
+                self.en_passant = 65;
+                println!("REST set 65");
+            }
+        } else {
+            self.en_passant = 65;
         }
-
-
-        self.en_passant_check(to, from, &pt, zobrist_keys);
 
         //Remove from pos piece
         self.remove_piece(from, &pt, pc, zobrist_keys);
@@ -420,47 +440,6 @@ impl Board {
 
         //new_board
         //Move{from, to, promote_to: None, capture}
-    }
-
-    fn en_passant_check(&mut self, to: usize, from: usize, pt: &PieceType, zobrist_keys: &ZobristKeys) {
-
-        if pt == &PieceType::Pawn {
-            if to == self.en_passant as usize {
-                //remove pawn at en_pass
-                println!("EP");
-                match self.turn {
-                    PieceColor::White => {
-                        self.pawns[PieceColor::Black] = self.pawns[PieceColor::Black] & !(1 << self.en_passant - 8);
-                        self.zobrist_hash ^= zobrist_keys.pawns[PieceColor::Black][(self.en_passant - 8) as usize];
-
-                    }
-                    PieceColor::Black => {
-                        self.pawns[PieceColor::White] = self.pawns[PieceColor::White] & !(1 << self.en_passant + 8);
-                        self.zobrist_hash ^= zobrist_keys.pawns[PieceColor::White][(self.en_passant + 8) as usize];
-                    }
-                };
-            }
-
-            if self.en_passant != 65 {
-                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
-            }
-
-            if to > 16 && (to - 16) == from && from > 7 && from < 16 {
-                //white
-                self.en_passant = (to as u8) - 8; //south_one
-                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
-            } else if to < 48 && (to + 16) == from && from > 47 && from < 56 {
-                //black
-                self.en_passant = (to as u8) + 8; //north_one
-                self.zobrist_hash ^= zobrist_keys.en_passant[self.en_passant as usize];
-            } else {
-                self.en_passant = 65;
-            }
-        } else {
-            self.en_passant = 65;
-        }
-
-
     }
 
     fn remove_piece(&mut self, pos: usize, pt: &PieceType, pc: PieceColor, zobrist_keys: &ZobristKeys) {
@@ -761,7 +740,7 @@ impl Board {
                     king_to_pos = 6;
                 }
 
-                self.castling &= 0b0011;
+                //self.castling &= 0b0011;
             }
             PieceColor::White => {
                 king_from_pos = 60;
@@ -777,7 +756,7 @@ impl Board {
                     king_to_pos = 62;
                 }
 
-                self.castling &= 0b1100;
+                //self.castling &= 0b1100;
             }
         }
 
@@ -992,6 +971,10 @@ impl Board {
         self.zobrist_hash ^= &engine.zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
         self.zobrist_hash ^= &engine.zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
 
+        if self.en_passant != 65 {
+            self.zobrist_hash ^= engine.zobrist_keys.en_passant[self.en_passant as usize];
+        }
+
         println!("LC: {:?} B", self.last_capture);
         let did_capture_occur = self.capture;//self.last_capture.pop().expect("Expected at least one capture state");
         println!("LC: {:?} A", self.last_capture);
@@ -1013,6 +996,9 @@ impl Board {
 
         };
 
+        if self.en_passant != 65 {
+            self.zobrist_hash ^= engine.zobrist_keys.en_passant[self.en_passant as usize];
+        }
 
         /*
         let did_capture_occur = self.last_capture.pop().expect("Expected at least one capture state");
