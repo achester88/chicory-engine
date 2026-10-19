@@ -10,3 +10,6 @@ readme = "README.md"
 keywords = ["chess", "engine"]
 [dependencies]
 log = "0.4.34"
+
+[profile.release]
+debug = true

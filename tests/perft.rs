@@ -21,12 +21,8 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
     }
 
     let moves = eng.gen_moves(&board);
-    println!("{:?}", moves);
     let init_zh = board.zobrist_hash;
-    println!("{:?}", board);
     for m in moves {
-        println!("------[{}({}, {})]------", Board::move_to_lan(&m), &m.to, &m.from);
-        println!("");
         board.make_move(eng, m);
         //board.print_board();
         if board.is_legal(&eng) {
@@ -37,15 +33,8 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
         }
         board.unmake_move(m, eng);
         if board.zobrist_hash != init_zh {
-            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            println!("Move: {:?}", Board::move_to_lan(&m));
-            board.print_board();
-            println!("----");
             assert_eq!(&mut init_board, board);
-            panic!("Board was not returned to initial state");
-            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         }
-        println!("----------------------------E");
     }
 
     let mut pass = true;
