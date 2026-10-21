@@ -23,7 +23,7 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
     let moves = eng.gen_moves(&board);
     let init_zh = board.zobrist_hash;
     for m in moves {
-        board.make_move(eng, m);
+        let lmi = board.make_move(eng, m);
         //board.print_board();
         if board.is_legal(&eng) {
             results.insert(
@@ -31,7 +31,7 @@ fn perft_from_string(eng: &Engine, board: &mut Board, list: String, depth: usize
                 multi_perft(&eng, board.clone(), depth - 1, THREAD_COUNT),
             );
         }
-        board.unmake_move(m, eng);
+        board.unmake_move(m, eng, lmi);
         if board.zobrist_hash != init_zh {
             assert_eq!(&mut init_board, board);
         }

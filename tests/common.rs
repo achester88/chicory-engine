@@ -31,7 +31,7 @@ pub fn assert_fen_arr(eng_arr: &mut Vec<OldMove>, expc_arr: &mut Vec<OldMove>) {
         eng_arr[i].board.castling &= 0b0000_1111;
         eng_arr[i].promote_to = None;
         eng_arr[i].capture = false;
-        eng_arr[i].board.last_move_info = vec![];
+        // eng_arr[i].board.last_move_info = vec![];
         eng_arr[i].board.capture = None;
 
         //eng_arr[i].board.zobrist_hash = 0;
