@@ -392,7 +392,7 @@ impl Board {
         //Add piece to to pos
         self.add_piece(to, &pt, pc, zobrist_keys);
 
-        self.recalc_board();
+       // self.recalc_board();
 
         self.next_turn(zobrist_keys);
 
@@ -434,7 +434,7 @@ impl Board {
         //Add piece to to pos
         self.add_piece(from, &pt, pc, zobrist_keys);
 
-        self.recalc_board();
+        //self.recalc_board();
 
         self.untake_turn(zobrist_keys);
 
@@ -442,10 +442,14 @@ impl Board {
 
     fn remove_piece(&mut self, pos: usize, pt: &PieceType, pc: PieceColor, zobrist_keys: &ZobristKeys) {
         //Remove Opps piece from to pos
+        self.occupied &= !(1 << pos);
+        self.pieces[pc] &= !(1 << pos);
+
         match pt {
             PieceType::Pawn => {
                 self.pawns[pc] = self.pawns[pc] & !(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.pawns[pc][pos];
+                //self.occupied &= !(1 << pos);
             },
             PieceType::Bishop => {
                 self.bishops[pc] = self.bishops[pc] & !(1 << pos);
@@ -471,6 +475,10 @@ impl Board {
     }
 
     fn add_piece(&mut self, pos: usize, pt: &PieceType, pc: PieceColor, zobrist_keys: &ZobristKeys) {
+
+        self.occupied |= (1 << pos);
+        self.pieces[pc] |= (1 << pos);
+
         match pt {
             PieceType::Pawn => {
                 self.pawns[pc] = self.pawns[pc] | (1 << pos);
@@ -500,6 +508,7 @@ impl Board {
     }
 
     pub fn recalc_board(&mut self) {
+        /*
         let white_pieces = self.pawns[PieceColor::White]
             | self.bishops[PieceColor::White]
             | self.knights[PieceColor::White]
@@ -512,9 +521,10 @@ impl Board {
             | self.rooks[PieceColor::Black]
             | self.queens[PieceColor::Black]
             | self.kings[PieceColor::Black];
+         */
 
-        self.occupied = white_pieces | black_pieces;
-        self.pieces = [white_pieces, black_pieces];
+        //self.occupied = white_pieces | black_pieces;
+        //self.pieces = [white_pieces, black_pieces];
     }
 
     fn remove_castling(&mut self, to: usize, pt: PieceType) {
@@ -561,6 +571,8 @@ impl Board {
             self.en_passant = 65;
         }
 
+        self.occupied |= (1 << to);
+        self.pieces[pc] |= (1 << to);
         match promot_to {
             PieceType::Knight => {
                 self.knights[pc] = self.knights[pc] | (1 << to);
@@ -584,7 +596,7 @@ impl Board {
         //Check for check
         let mut out: Vec<Move> = vec![];
         //In case other piece is removed all case need to be run
-            self.recalc_board();
+       //     self.recalc_board();
 
         capture
     }
@@ -606,6 +618,8 @@ impl Board {
 
         self.add_piece(from, &PieceType::Pawn, pc, zobrist_keys);
 
+        self.occupied &= !(1 << to);
+        self.pieces[pc] &= !(1 << to);
         match promot_to {
             PieceType::Knight => {
                 self.knights[pc] = self.knights[pc] & !(1 << to);
