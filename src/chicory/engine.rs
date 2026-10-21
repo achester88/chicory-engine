@@ -404,8 +404,10 @@ impl Engine {
 
     pub fn gen_check_info(&self, board: &Board, pos: usize, king_pos: usize) -> (u64, u64) {
         let mut kingless = board.clone();
+        kingless.occupied &= !board.kings[board.turn];
         kingless.kings[board.turn] = 0;
-        kingless.recalc_board();
+        kingless.pieces[board.turn] &= !board.kings[board.turn];
+        //kingless.recalc_board();
 
         let mut check_real: u64 = 0; //any piece other than the king need to occupied
         let mut check_full: u64 = 0; //king can not be on

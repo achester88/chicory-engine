@@ -26,6 +26,8 @@ fn pawn_base() {
     );
 }
 
+
+
 #[test]
 fn knight_base() {
     let eng = Engine::new();
