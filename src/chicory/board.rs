@@ -2,6 +2,7 @@
 use super::bitboard::{print_bitboard, print_bitboard_pos};
 use crate::chicory::bitboard::board_serialize;
 use crate::chicory::engine::Engine;
+use crate::chicory::utils::bit_scan;
 use core::ops::{Index, IndexMut, Not};
 //use crate::chicory::board::MoveType::Move;
 use crate::chicory::tables::ZobristKeys;
@@ -86,7 +87,7 @@ impl Not for PieceColor {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LastMoveInfo {
-    capture: Option<PieceType>,
+    pub capture: Option<PieceType>,
     en_passant: u8,
     castling: u8,
     check_real: u64,
@@ -117,7 +118,7 @@ pub struct Board {
     pub capture: Option<PieceType>,
 
     //pub last_capture: Vec<Option<PieceType>>,
-    pub last_move_info: Vec<LastMoveInfo>,
+    // pub last_move_info: Vec<LastMoveInfo>,
     //pub last_castling: Vec<u8>,
     //pub last_en_passant: Vec<u8>,
     //pub last_check_info: Vec<(u64, u64)>,
@@ -125,7 +126,7 @@ pub struct Board {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MoveType {
-    Capture,
+    // Capture,
     CastleKingSide,
     CastleQueenSide,
     Move,
@@ -248,7 +249,7 @@ impl Board {
             occupied: wp | wb | wn | wr | wq | wk | bp | bb | bn | br | bq | bk,
             pieces: [wp | wb | wn | wr | wq | wk, bp | bb | bn | br | bq | bk],
             zobrist_hash: 0,
-            last_move_info: vec![],
+            // last_move_info: vec![],
 
         };
 
@@ -482,8 +483,8 @@ impl Board {
 
     fn add_piece(&mut self, pos: usize, pt: &PieceType, pc: PieceColor, zobrist_keys: &ZobristKeys) {
 
-        self.occupied |= (1 << pos);
-        self.pieces[pc] |= (1 << pos);
+        self.occupied |= 1 << pos;
+        self.pieces[pc] |= 1 << pos;
 
         match pt {
             PieceType::Pawn => {
@@ -576,8 +577,8 @@ impl Board {
             self.en_passant = 65;
         }
 
-        self.occupied |= (1 << to);
-        self.pieces[pc] |= (1 << to);
+        self.occupied |= 1 << to;
+        self.pieces[pc] |= 1 << to;
         match promot_to {
             PieceType::Knight => {
                 self.knights[pc] = self.knights[pc] | (1 << to);
@@ -599,7 +600,6 @@ impl Board {
         }
 
         //Check for check
-        let mut out: Vec<Move> = vec![];
         //In case other piece is removed all case need to be run
            // self.recalc_board();
 
@@ -616,7 +616,7 @@ impl Board {
 
         match did_capture_occur {
             Some(capture_type) => {
-                self.add_piece(to, &did_capture_occur.unwrap(), !pc, zobrist_keys);
+                self.add_piece(to, &capture_type, !pc, zobrist_keys);
             },
             None => {}
         }
@@ -837,12 +837,9 @@ impl Board {
     }
 
     pub fn lan_to_move(str: &str) -> Move { //NOTE: ASSUMES THERE WAS NO CAPTURE
-        let mut from: usize;
-        let mut to: usize;
+        let from: usize;
+        let to: usize;
         let mut promote_to = None;
-        let mut capture = false;
-
-        let mut new_move: Move;
 
         from = Board::lan_to_pos(&str[0..2]);
         to = Board::lan_to_pos(&str[2..4]);
@@ -868,7 +865,7 @@ impl Board {
 
    pub fn is_legal(&self, engine: &Engine) -> bool {
         let king_pos = board_serialize(self.kings[!self.turn])[0];
-        let (cr, cf) = engine.cal_check(&self, king_pos, self.turn, true); 
+        let (cr, _) = engine.cal_check(&self, king_pos, self.turn, true); 
         if cr != 0 {
             return false;
         }
@@ -876,21 +873,21 @@ impl Board {
         return true;
    } 
 
-    pub fn make_move(&mut self, engine: &Engine, move_: Move) -> bool { //returns if a capture happened
+    pub fn make_move(&mut self, engine: &Engine, move_: Move) -> LastMoveInfo { //returns if a capture happened
         //self.last_castling.push(self.castling);
         //self.last_en_passant.push(self.en_passant);
         //self.last_capture.push(self.capture);
         //self.last_check_info.push((self.check_real, self.check_full));
-        self.last_move_info.push(LastMoveInfo {
+        let lmi = LastMoveInfo {
             castling: self.castling,
             en_passant: self.en_passant,
             capture: self.capture,
             check_real: self.check_real,
             check_full: self.check_full,
-        });
+        };
 
         let did_capture_occur: Option<PieceType> = match move_.move_type {
-            MoveType::Move | MoveType::Capture => self.move_piece(move_.to, move_.from, &engine.zobrist_keys),
+            MoveType::Move => self.move_piece(move_.to, move_.from, &engine.zobrist_keys),
             MoveType::CastleKingSide => self.castle(80, &engine.zobrist_keys),
             MoveType::CastleQueenSide => self.castle(88, &engine.zobrist_keys),
             MoveType::Promotion => self.promote(move_.from, move_.to, move_.promote_to.unwrap(), &engine.zobrist_keys),
@@ -899,18 +896,18 @@ impl Board {
         self.capture = did_capture_occur;
 
         if self.kings[self.turn] != 0 {
-            let king_pos = board_serialize(self.kings[self.turn]);
-            let (cr, cf) = engine.cal_check(&self, king_pos[0], !self.turn, false);
+            let king_pos = bit_scan(self.kings[self.turn]);//board_serialize(self.kings[self.turn]);
+            let (cr, cf) = engine.cal_check(&self, king_pos, !self.turn, false);
             self.check_real = cr;
             self.check_full = cf;
         } else {
             self.check_real = 0;
             self.check_full = 0;
         }
-        return did_capture_occur.is_some();
+        return lmi;
     }
 
-    pub fn unmake_move(&mut self, move_: Move, engine: &Engine) -> bool {
+    pub fn unmake_move(&mut self, move_: Move, engine: &Engine, last_move_info: LastMoveInfo) {
 
         //Remove Current Castling State From Hash
         self.zobrist_hash ^= &engine.zobrist_keys.white_castling_rights[((self.castling & 0b1100) >> 2) as usize];
@@ -921,7 +918,7 @@ impl Board {
         }
 
         let did_capture_occur = self.capture;//self.last_capture.pop().expect("Expected at least one capture state");
-        let last_move_info = self.last_move_info.pop().expect("Expected at least one previous state");
+        // let last_move_info = self.last_move_info.pop().expect("Expected at least one previous state");
         self.capture = last_move_info.capture;
         self.castling = last_move_info.castling;
         self.en_passant = last_move_info.en_passant;
@@ -932,7 +929,7 @@ impl Board {
         self.zobrist_hash ^= &engine.zobrist_keys.black_castling_rights[(self.castling & 0b0011) as usize];  //Black
 
         match move_.move_type {
-            MoveType::Move | MoveType::Capture => self.unmove_piece(move_.to, move_.from, &engine.zobrist_keys, did_capture_occur),
+            MoveType::Move => self.unmove_piece(move_.to, move_.from, &engine.zobrist_keys, did_capture_occur),
             MoveType::CastleKingSide => self.uncastle(80, &engine.zobrist_keys),
             MoveType::CastleQueenSide => self.uncastle(88, &engine.zobrist_keys),
             MoveType::Promotion => self.unpromote(move_.from, move_.to, move_.promote_to.unwrap(), &engine.zobrist_keys, did_capture_occur),
@@ -944,7 +941,7 @@ impl Board {
         }
 
 
-        return did_capture_occur.is_some();
+        // return did_capture_occur.is_some();
     }
 
     #[allow(dead_code)]

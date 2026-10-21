@@ -154,7 +154,7 @@ impl Engine {
             }
         }
 
-        let king_pos = board_serialize(board.kings[!board.turn]);
+        //let king_pos = bit_scan(board.kings[!board.turn]);//board_serialize(board.kings[!board.turn]);
 
         //######### New Board Gen Loop #########
 
@@ -185,7 +185,7 @@ impl Engine {
                 //if not_check || board.check_real & (1 << to) != 0 {
                     //Not in check or to is in (check)
                     //all_moves.push(board.move_piece(to, from, &self.zobrist_keys));
-                let (cr, cf) = self.cal_check(&board, to, !board.turn, true);
+                let (cr, _) = self.cal_check(&board, to, !board.turn, true);
                 //println!("cr: {}, cf: {}, to: {}", cr, cf, to);
                 if cr == 0 {
                     all_moves.push(Move { from: from, to: to, promote_to: None, move_type: MoveType::Move });
@@ -256,7 +256,7 @@ impl Engine {
             PieceColor::Black => board.pieces[PieceColor::White],
         };
 
-        let attacks = (self.king_attacks[sq] & (!board.occupied | opp)) ;
+        let attacks = self.king_attacks[sq] & (!board.occupied | opp);
 
         (sq, attacks)
     }

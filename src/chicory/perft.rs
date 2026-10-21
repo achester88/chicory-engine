@@ -16,11 +16,11 @@ pub fn perft(eng: &Engine, board: &mut Board, depth: usize) -> usize {
     let moves = eng.gen_moves(&board);
 
     for m in moves {
-        board.make_move(eng, m);
+        let lmi = board.make_move(eng, m);
         //if(board.is_legal(&eng)) {
             count += perft(eng, board, depth - 1);
         //}
-        board.unmake_move(m, eng);
+        board.unmake_move(m, eng, lmi);
     }
 
     count
@@ -66,11 +66,11 @@ pub fn multi_perft(eng: &Engine, board: Board, depth: usize, thread_count: usize
                 //let mut owned_board = board.clone();
                 
                 for m in set {
-                    owned_board.make_move(eng, m);
+                    let lmi = owned_board.make_move(eng, m);
                     if owned_board.is_legal(&eng) {
                         count += perft(eng, &mut owned_board, depth - 1);
                     }
-                    owned_board.unmake_move(m, eng);
+                    owned_board.unmake_move(m, eng, lmi);
                 }
                 ctx.send(count).unwrap();
             });
@@ -103,8 +103,8 @@ pub fn multi_perft_list(
 
     let moves = eng.gen_moves(&board);
     for m in moves {
-        board.make_move(eng, m);
-        if(board.is_legal(&eng)) {
+        let lmi = board.make_move(eng, m);
+        if board.is_legal(&eng) {
         
         let child_total = multi_perft(&eng, board.clone(), depth - 1, thread_count);
         //board.unmake_move(m, eng);
@@ -112,7 +112,7 @@ pub fn multi_perft_list(
         total += child_total;
         }
 
-        board.unmake_move(m, eng);
+        board.unmake_move(m, eng, lmi);
     }
 
     (total, result)

@@ -3,6 +3,16 @@ use super::utils;
 pub const NOTAFILE: u64 = 0xfefefefefefefefe; // ~0x0101010101010101
 pub const NOTHFILE: u64 = 0x7f7f7f7f7f7f7f7f; // ~0x8080808080808080
 
+struct Bitboard {
+    board: u64
+}
+
+impl Bitboard {
+    pub fn new(val: u64) -> Self {
+        Bitboard {board: val}
+    }
+}
+
 pub mod postshift {
     use super::{NOTAFILE, NOTHFILE};
 

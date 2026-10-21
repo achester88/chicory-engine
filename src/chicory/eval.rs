@@ -210,7 +210,12 @@ pub fn minmax(
 
     for m in moves {
 
-        let did_capture_occur = board.make_move(eng, m);
+        let lmi = board.make_move(eng, m);
+
+        if !board.is_legal(eng) {
+            board.unmake_move(m, eng, lmi);
+        } else {
+
 
         let (score, _, nodes, pv) = minmax(
             &eng,
@@ -227,7 +232,7 @@ pub fn minmax(
             transposition_table,
             None,
             false,
-            did_capture_occur,
+            lmi.capture.is_some(),
             master_ancient_node
         );
         node_count += nodes;
@@ -257,7 +262,7 @@ pub fn minmax(
                 PieceColor::Black => Flag::ALPHA,
             };
 
-            board.unmake_move(m, eng);
+            board.unmake_move(m, eng, lmi);
             break;
         }
 
@@ -265,11 +270,12 @@ pub fn minmax(
         {
 
             early_stop = true;
-            board.unmake_move(m, eng);
+            board.unmake_move(m, eng, lmi);
             break;
         }
 
-        board.unmake_move(m, eng);
+        board.unmake_move(m, eng, lmi);
+        }
     }
 
 
@@ -300,7 +306,7 @@ pub fn minmax(
             depth: depth,
             flag: flag,
             eval: best,
-            ancient: master_ancient_node,
+            // ancient: master_ancient_node,
             move_info: best_move,
         });
     }
@@ -383,9 +389,13 @@ pub fn stopping_search(
 
     for m in moves {
 
-        let did_capture_occur = board.make_move(eng, m);
+        let lmi = board.make_move(eng, m);
 
-        if did_capture_occur { //|| m.board.check_real != 0
+        if !board.is_legal(eng) {
+            board.unmake_move(m, eng, lmi);
+        } else {
+
+        if lmi.capture.is_some() { //|| m.board.check_real != 0
             let (score, _, nodes, _pv) = stopping_search(
                 &eng,
                 board,
@@ -405,14 +415,14 @@ pub fn stopping_search(
             match turn {
                 PieceColor::White => {
                     if score >= beta {
-                        board.unmake_move(m, eng);
+                        board.unmake_move(m, eng, lmi);
                         return (beta, None, 0, vec![]);
                     }
                     alpha = alpha.max(score);
                 },
                 PieceColor::Black => {
                     if score <= alpha {
-                        board.unmake_move(m, eng);
+                        board.unmake_move(m, eng, lmi);
                         return (alpha, None, 0, vec![]);
                     }
                     beta = beta.min(score);
@@ -424,12 +434,13 @@ pub fn stopping_search(
             || (top)
             && (time_per_move != 0.0 && (move_timer.elapsed().as_millis() as f64) > time_per_move)
         {
-            board.unmake_move(m, eng);
+            board.unmake_move(m, eng, lmi);
             break;
         }
             }
 
-        board.unmake_move(m, eng);
+            board.unmake_move(m, eng, lmi);
+        }
     }
 
     match turn {

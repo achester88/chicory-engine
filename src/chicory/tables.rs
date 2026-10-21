@@ -15,7 +15,7 @@ pub struct Entry {
     pub depth: usize,
     pub flag: Flag,
     pub eval: i32,
-    pub ancient: bool,
+    // pub ancient: bool,
     pub move_info: Move,
 }
 
