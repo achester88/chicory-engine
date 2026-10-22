@@ -25,20 +25,26 @@ pub struct Engine {
     pawn_attacks: Vec<Vec<Bitboard>>,
     king_attacks: Vec<Bitboard>,
     knight_attacks: Vec<Bitboard>,
+    king_attackables: Vec<Bitboard>,
 
     pub zobrist_keys: ZobristKeys,
 }
 
 impl Engine {
     pub fn new() -> Self {
-        Engine {
+        let mut new_engine = Engine {
             ray_attacks: gen_ray_attacks(),
             pawn_attacks: gen_pawn_attacks(),
             king_attacks: gen_king_attacks(),
             knight_attacks: gen_knight_attacks(),
+            king_attackables: vec![],
 
             zobrist_keys: ZobristKeys::new(),
-        }
+        };
+
+        new_engine.king_attackables = new_engine.gen_king_attackables();
+
+        return new_engine;
     }
     //from, to, new board
     pub fn gen_moves(&self, board: &Board) -> Vec<Move> {
@@ -191,7 +197,7 @@ impl Engine {
         let opp_color = !board.turn;
 
         for i in pos {
-            let attackable_check_pos = self.gen_king_attackables(i);
+            let attackable_check_pos = self.king_attackables[i];
 
             let hits = attackable_check_pos & board.pieces[!board.turn];
 
@@ -325,7 +331,7 @@ impl Engine {
         //board.print_board();
         let mut check_real: Bitboard = Bitboard::new(0);
         let mut check_full: Bitboard = Bitboard::new(0);
-        let attackable_check_pos = self.gen_king_attackables(pos);
+        let attackable_check_pos = self.king_attackables[pos];
 
         let hits = attackable_check_pos & board.pieces[opp_color];
 
@@ -354,8 +360,8 @@ impl Engine {
                             // println!("HITTTTTT at {}", pos);
                             let (cr, cf) = self.gen_check_info(&board, to, pos);
                             //TODO SET R AND F TO ONLY SAME RANK/FILE OF KING
-                            check_real |= cr;
-                            check_full |= cf;
+                            check_real = check_real | cr;
+                            check_full = check_full | cf;
                         }
                     },
                     None => {}
@@ -369,19 +375,40 @@ impl Engine {
         (check_real, check_full)
     }
 
-    pub fn gen_king_attackables(&self, pos: usize) -> Bitboard {
-        let board = self.ray_attacks[Dir::North as usize][pos]
-            | self.ray_attacks[Dir::NOEA as usize][pos]
-            | self.ray_attacks[Dir::East as usize][pos]
-            | self.ray_attacks[Dir::SOEA as usize][pos]
-            | self.ray_attacks[Dir::South as usize][pos]
-            | self.ray_attacks[Dir::SOWE as usize][pos]
-            | self.ray_attacks[Dir::West as usize][pos]
-            | self.ray_attacks[Dir::NOWE as usize][pos]
-            | self.knight_attacks[pos]
-            | Bitboard::new(1 << pos);
+    fn gen_king_attacks() -> Vec<Bitboard> {
+        let mut attacks: Vec<Bitboard> = vec![Bitboard::new(0); 64];
 
-        board
+        for i in 0..64 {
+            let mut pos = Bitboard::new(1 << i);
+
+            pos |= postshift::east_one(pos) | postshift::west_one(pos);
+            pos |= postshift::nort_one(pos) | postshift::sout_one(pos);
+
+            attacks[i] = pos;
+        }
+
+        attacks
+    }
+
+    pub fn gen_king_attackables(&self) -> Vec<Bitboard> {
+        let mut attackables: Vec<Bitboard> = vec![Bitboard::new(0); 64];
+
+        for pos in 0..64 {
+            let board = self.ray_attacks[Dir::North as usize][pos]
+                | self.ray_attacks[Dir::NOEA as usize][pos]
+                | self.ray_attacks[Dir::East as usize][pos]
+                | self.ray_attacks[Dir::SOEA as usize][pos]
+                | self.ray_attacks[Dir::South as usize][pos]
+                | self.ray_attacks[Dir::SOWE as usize][pos]
+                | self.ray_attacks[Dir::West as usize][pos]
+                | self.ray_attacks[Dir::NOWE as usize][pos]
+                | self.knight_attacks[pos]
+                | Bitboard::new(1 << pos);
+
+            attackables[pos] = board;
+        }
+
+        attackables
     }
 
     pub fn gen_check_info(&self, board: &Board, pos: usize, king_pos: usize) -> (Bitboard, Bitboard) {
