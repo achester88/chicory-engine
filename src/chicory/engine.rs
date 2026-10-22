@@ -48,7 +48,7 @@ impl Engine {
     }
     //from, to, new board
     pub fn gen_moves(&self, board: &Board) -> Vec<Move> {
-        let mut all_moves: Vec<Move> = vec![];
+        let mut all_moves: Vec<Move> = Vec::with_capacity(64);
         let mut possible: Vec<(usize, Bitboard)> = vec![];
         let mut possible_king: Vec<(usize, Bitboard)> = vec![];
 
