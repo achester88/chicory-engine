@@ -4,6 +4,7 @@ use crate::chicory::bitboard::board_serialize;
 use crate::chicory::engine::Engine;
 use crate::chicory::utils::bit_scan;
 use core::ops::{Index, IndexMut, Not};
+use crate::chicory::bitboard::Bitboard;
 //use crate::chicory::board::MoveType::Move;
 use crate::chicory::tables::ZobristKeys;
 
@@ -23,8 +24,8 @@ pub enum PieceType {
     King,
 }
 
-impl Index<PieceColor> for [u64] {
-    type Output = u64;
+impl Index<PieceColor> for [Bitboard] {
+    type Output = Bitboard;
 
     fn index(&self, color: PieceColor) -> &Self::Output {
         match color {
@@ -34,13 +35,24 @@ impl Index<PieceColor> for [u64] {
     }
 }
 
- impl IndexMut<PieceColor> for [u64; 2] {
+ impl IndexMut<PieceColor> for [Bitboard; 2] {
     fn index_mut(&mut self, color: PieceColor) -> &mut Self::Output {
         match color {
             PieceColor::White => &mut self[0],
             PieceColor::Black => &mut self[1],
         }
    }
+}
+
+impl Index<PieceColor> for [[Bitboard; 64]; 2] {
+    type Output = [Bitboard; 64];
+
+    fn index(&self, color: PieceColor) -> &Self::Output {
+        match color {
+            PieceColor::White => &self[0],
+            PieceColor::Black => &self[1],
+        }
+    }
 }
 
 impl Index<PieceColor> for [[u64; 64]; 2] {
@@ -90,30 +102,30 @@ pub struct LastMoveInfo {
     pub capture: Option<PieceType>,
     en_passant: u8,
     castling: u8,
-    check_real: u64,
-    check_full: u64
+    check_real: Bitboard,
+    check_full: Bitboard
 }
 
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Board {
-    pub pawns: [u64; 2],
-    pub bishops: [u64; 2],
-    pub knights: [u64; 2],
-    pub rooks: [u64; 2],
-    pub queens: [u64; 2],
-    pub kings: [u64; 2],
+    pub pawns: [Bitboard; 2],
+    pub bishops: [Bitboard; 2],
+    pub knights: [Bitboard; 2],
+    pub rooks: [Bitboard; 2],
+    pub queens: [Bitboard; 2],
+    pub kings: [Bitboard; 2],
 
     pub turn: PieceColor,
     pub castling: u8,    //white, black | queenside, kingside QKqk
     pub en_passant: u8,  //position of available en passant
-    pub check_real: u64, //TODO USE BOOL AND CAL AS NEEDED
-    pub check_full: u64,
+    pub check_real: Bitboard, //TODO USE BOOL AND CAL AS NEEDED
+    pub check_full: Bitboard,
     pub half_moves: u16,
     pub full_move: u64,
 
-    pub occupied: u64,
-    pub pieces: [u64; 2], //All piece of the same color,
+    pub occupied: Bitboard,
+    pub pieces: [Bitboard; 2], //All piece of the same color,
     pub zobrist_hash: u64,
     pub capture: Option<PieceType>,
 
@@ -228,33 +240,33 @@ impl Board {
         }
 
         let mut new_board = Board {
-            pawns: [wp, bp],
-            bishops: [wb, bb],
-            knights: [wn, bn],
-            rooks: [wr, br],
-            queens: [wq, bq],
-            kings: [wk, bk],
+            pawns:   [Bitboard::new(wp), Bitboard::new(bp)],
+            bishops: [Bitboard::new(wb), Bitboard::new(bb)],
+            knights: [Bitboard::new(wn), Bitboard::new(bn)],
+            rooks:   [Bitboard::new(wr), Bitboard::new(br)],
+            queens:  [Bitboard::new(wq), Bitboard::new(bq)],
+            kings:   [Bitboard::new(wk), Bitboard::new(bk)],
             turn: if fen[1] == "w" {
                 PieceColor::White
             } else {
                 PieceColor::Black
             },
             castling: 0b1111_0000 | castling,
-            check_real: 0,
-            check_full: 0,
+            check_real: Bitboard::new(0),
+            check_full: Bitboard::new(0),
             capture: None,
             en_passant: ep,
             half_moves: hm,
             full_move: fm,
-            occupied: wp | wb | wn | wr | wq | wk | bp | bb | bn | br | bq | bk,
-            pieces: [wp | wb | wn | wr | wq | wk, bp | bb | bn | br | bq | bk],
+            occupied: Bitboard::new(wp | wb | wn | wr | wq | wk | bp | bb | bn | br | bq | bk),
+            pieces: [Bitboard::new(wp | wb | wn | wr | wq | wk), Bitboard::new(bp | bb | bn | br | bq | bk)],
             zobrist_hash: 0,
             // last_move_info: vec![],
 
         };
 
         let king_board = new_board.kings[new_board.turn];
-        if king_board != 0 {
+        if king_board.val != 0 {
             let king_pos = board_serialize(king_board);
 
             let (cr, cf) = engine.cal_check(&new_board, king_pos[0], !new_board.turn, false);
@@ -269,30 +281,30 @@ impl Board {
     }
 
     pub fn lookup(&self, pos: usize) -> Option<(PieceColor, PieceType)> {
-        let board = 1 << pos;
+        let board = Bitboard::new((1 << pos));
 
         let color: PieceColor;
 
-        if board & self.pieces[PieceColor::White] != 0 {
+        if board & self.pieces[PieceColor::White] != Bitboard::new(0) {
             color = PieceColor::White;
-        } else if board & self.pieces[PieceColor::Black] != 0 {
+        } else if board & self.pieces[PieceColor::Black] != Bitboard::new(0) {
             color = PieceColor::Black;
         } else {
             return None;
         }
 
-        if board & (self.pawns[color] | self.bishops[color] | self.knights[color]) != 0 {
-            if board & self.pawns[color] != 0 {
+        if board & (self.pawns[color] | self.bishops[color] | self.knights[color]) != Bitboard::new(0) {
+            if board & self.pawns[color] != Bitboard::new(0) {
                 Some((color, PieceType::Pawn))
-            } else if board & self.bishops[color] != 0 {
+            } else if board & self.bishops[color] != Bitboard::new(0) {
                 Some((color, PieceType::Bishop))
             } else {
                 Some((color, PieceType::Knight))
             }
         } else {
-            if board & self.rooks[color] != 0 {
+            if board & self.rooks[color] != Bitboard::new(0) {
                 Some((color, PieceType::Rook))
-            } else if board & self.queens[color] != 0 {
+            } else if board & self.queens[color] != Bitboard::new(0) {
                 Some((color, PieceType::Queen))
             } else {
                 Some((color, PieceType::King))
@@ -448,34 +460,34 @@ impl Board {
         //Remove Opps piece from to pos
         //print_bitboard(self.occupied);
         //print_bitboard_pos(1 << pos, pos);
-        self.occupied &= !(1 << pos);
+        self.occupied.val &= !(1 << pos);
         //print_bitboard(self.occupied);
-        self.pieces[pc] &= !(1 << pos);
+        self.pieces[pc].val &= !(1 << pos);
 
         match pt {
             PieceType::Pawn => {
-                self.pawns[pc] = self.pawns[pc] & !(1 << pos);
+                self.pawns[pc] = self.pawns[pc] & !Bitboard::new((1 << pos));
                 self.zobrist_hash ^= zobrist_keys.pawns[pc][pos];
                 //self.occupied &= !(1 << pos);
             },
             PieceType::Bishop => {
-                self.bishops[pc] = self.bishops[pc] & !(1 << pos);
+                self.bishops[pc] = self.bishops[pc] & !Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.bishops[pc][pos];
             },
             PieceType::Knight => {
-                self.knights[pc] = self.knights[pc] & !(1 << pos);
+                self.knights[pc] = self.knights[pc] & !Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.knights[pc][pos];
             },
             PieceType::Rook => {
-                self.rooks[pc] = self.rooks[pc] & !(1 << pos);
+                self.rooks[pc] = self.rooks[pc] & !Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.rooks[pc][pos];
             },
             PieceType::Queen => {
-                self.queens[pc] = self.queens[pc] & !(1 << pos);
+                self.queens[pc] = self.queens[pc] & !Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.queens[pc][pos];
             },
             PieceType::King => {
-                self.kings[pc] = self.kings[pc] & !(1 << pos);
+                self.kings[pc] = self.kings[pc] & !Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.kings[pc][pos];
             },
         };
@@ -483,32 +495,32 @@ impl Board {
 
     fn add_piece(&mut self, pos: usize, pt: &PieceType, pc: PieceColor, zobrist_keys: &ZobristKeys) {
 
-        self.occupied |= 1 << pos;
-        self.pieces[pc] |= 1 << pos;
+        self.occupied |= Bitboard::new(1 << pos);
+        self.pieces[pc] |= Bitboard::new(1 << pos);
 
         match pt {
             PieceType::Pawn => {
-                self.pawns[pc] = self.pawns[pc] | (1 << pos);
+                self.pawns[pc] = self.pawns[pc] | Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.pawns[pc][pos];
             },
             PieceType::Bishop => {
-                self.bishops[pc] = self.bishops[pc] | (1 << pos);
+                self.bishops[pc] = self.bishops[pc] | Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.bishops[pc][pos];
             },
             PieceType::Knight => {
-                self.knights[pc] = self.knights[pc] | (1 << pos);
+                self.knights[pc] = self.knights[pc] | Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.knights[pc][pos];
             },
             PieceType::Rook => {
-                self.rooks[pc] = self.rooks[pc] | (1 << pos);
+                self.rooks[pc] = self.rooks[pc] | Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.rooks[pc][pos];
             },
             PieceType::Queen => {
-                self.queens[pc] = self.queens[pc] | (1 << pos);
+                self.queens[pc] = self.queens[pc] | Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.queens[pc][pos];
             },
             PieceType::King => {
-                self.kings[pc] = self.kings[pc] | (1 << pos);
+                self.kings[pc] = self.kings[pc] | Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.kings[pc][pos];
             },
         };
@@ -577,23 +589,23 @@ impl Board {
             self.en_passant = 65;
         }
 
-        self.occupied |= 1 << to;
-        self.pieces[pc] |= 1 << to;
+        self.occupied |= Bitboard::new(1 << to);
+        self.pieces[pc] |= Bitboard::new(1 << to);
         match promot_to {
             PieceType::Knight => {
-                self.knights[pc] = self.knights[pc] | (1 << to);
+                self.knights[pc] = self.knights[pc] | Bitboard::new(1 << to);
                 self.zobrist_hash ^= zobrist_keys.knights[pc][to];
             },
             PieceType::Bishop => {
-                self.bishops[pc] = self.bishops[pc] | (1 << to);
+                self.bishops[pc] = self.bishops[pc] | Bitboard::new(1 << to);
                 self.zobrist_hash ^= zobrist_keys.bishops[pc][to];
             },
             PieceType::Rook => {
-                self.rooks[pc] = self.rooks[pc] | (1 << to);
+                self.rooks[pc] = self.rooks[pc] | Bitboard::new(1 << to);
                 self.zobrist_hash ^= zobrist_keys.rooks[pc][to];
             },
             PieceType::Queen => {
-                self.queens[pc] = self.queens[pc] | (1 << to);
+                self.queens[pc] = self.queens[pc] | Bitboard::new(1 << to);
                 self.zobrist_hash ^= zobrist_keys.queens[pc][to];
             },
             _ => { panic!("Promotion of unsuported piece type") }
@@ -611,8 +623,8 @@ impl Board {
         let (pc, _) = self.lookup(to).unwrap();
         //let (old_pc, old_pt) = new_board.lookup(to);
 
-        self.occupied &= !(1 << to);
-        self.pieces[pc] &= !(1 << to);
+        self.occupied &= !Bitboard::new(1 << to);
+        self.pieces[pc] &= !Bitboard::new(1 << to);
 
         match did_capture_occur {
             Some(capture_type) => {
@@ -625,19 +637,19 @@ impl Board {
        self.add_piece(from, &PieceType::Pawn, pc, zobrist_keys);
         match promot_to {
             PieceType::Knight => {
-                self.knights[pc] = self.knights[pc] & !(1 << to);
+                self.knights[pc] = self.knights[pc] & !Bitboard::new(1 << to);
                 self.zobrist_hash ^= zobrist_keys.knights[pc][to];
             },
             PieceType::Bishop => {
-                self.bishops[pc] = self.bishops[pc] & !(1 << to);
+                self.bishops[pc] = self.bishops[pc] & !Bitboard::new(1 << to);
                 self.zobrist_hash ^= zobrist_keys.bishops[pc][to];
             },
             PieceType::Rook => {
-                self.rooks[pc] = self.rooks[pc] & !(1 << to);
+                self.rooks[pc] = self.rooks[pc] & !Bitboard::new(1 << to);
                 self.zobrist_hash ^= zobrist_keys.rooks[pc][to];
             },
             PieceType::Queen => {
-                self.queens[pc] = self.queens[pc] & !(1 << to);
+                self.queens[pc] = self.queens[pc] & !Bitboard::new(1 << to);
                 self.zobrist_hash ^= zobrist_keys.queens[pc][to];
             },
             _ => { panic!("Promotion of unsuported piece type") }
@@ -866,7 +878,7 @@ impl Board {
    pub fn is_legal(&self, engine: &Engine) -> bool {
         let king_pos = board_serialize(self.kings[!self.turn])[0];
         let (cr, _) = engine.cal_check(&self, king_pos, self.turn, true); 
-        if cr != 0 {
+        if cr.val != 0 {
             return false;
         }
         
@@ -895,14 +907,14 @@ impl Board {
 
         self.capture = did_capture_occur;
 
-        if self.kings[self.turn] != 0 {
-            let king_pos = bit_scan(self.kings[self.turn]);//board_serialize(self.kings[self.turn]);
+        if self.kings[self.turn] != Bitboard::new(0) {
+            let king_pos = bit_scan(self.kings[self.turn].val);//board_serialize(self.kings[self.turn]);
             let (cr, cf) = engine.cal_check(&self, king_pos, !self.turn, false);
             self.check_real = cr;
             self.check_full = cf;
         } else {
-            self.check_real = 0;
-            self.check_full = 0;
+            self.check_real.val = 0;
+            self.check_full.val = 0;
         }
         return lmi;
     }
@@ -967,29 +979,29 @@ impl Board {
             for f in 0..8 {
                 let i = (r * 8) + f;
 
-                if ((self.pawns[PieceColor::White] >> i) & 1) == 1 {
+                if ((self.pawns[PieceColor::White] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][0]);
-                } else if ((self.bishops[PieceColor::White] >> i) & 1) == 1 {
+                } else if ((self.bishops[PieceColor::White] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][2]);
-                } else if ((self.knights[PieceColor::White] >> i) & 1) == 1 {
+                } else if ((self.knights[PieceColor::White] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][1]);
-                } else if ((self.rooks[PieceColor::White] >> i) & 1) == 1 {
+                } else if ((self.rooks[PieceColor::White] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][3]);
-                } else if ((self.queens[PieceColor::White] >> i) & 1) == 1 {
+                } else if ((self.queens[PieceColor::White] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][4]);
-                } else if ((self.kings[PieceColor::White] >> i) & 1) == 1 {
+                } else if ((self.kings[PieceColor::White] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][5]);
-                } else if ((self.pawns[PieceColor::Black] >> i) & 1) == 1 {
+                } else if ((self.pawns[PieceColor::Black] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][6]);
-                } else if ((self.bishops[PieceColor::Black] >> i) & 1) == 1 {
+                } else if ((self.bishops[PieceColor::Black] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][8]);
-                } else if ((self.knights[PieceColor::Black] >> i) & 1) == 1 {
+                } else if ((self.knights[PieceColor::Black] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][7]);
-                } else if ((self.rooks[PieceColor::Black] >> i) & 1) == 1 {
+                } else if ((self.rooks[PieceColor::Black] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][9]);
-                } else if ((self.queens[PieceColor::Black] >> i) & 1) == 1 {
+                } else if ((self.queens[PieceColor::Black] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][10]);
-                } else if ((self.kings[PieceColor::Black] >> i) & 1) == 1 {
+                } else if ((self.kings[PieceColor::Black] >> i) & Bitboard::new(1)) == Bitboard::new(1) {
                     print!("{} ", set[n][11]);
                 } else {
                     if i == self.en_passant {

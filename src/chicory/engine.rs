@@ -1,5 +1,6 @@
+use crate::chicory::bitboard::postshift;
 use crate::chicory::board::Move;
-use super::bitboard::*;
+use super::bitboard::{Bitboard, board_serialize};
 use super::board::*;
 use super::utils::*;
 use super::tables::ZobristKeys;
@@ -20,10 +21,10 @@ pub enum Dir {
 }
 
 pub struct Engine {
-    ray_attacks: Vec<Vec<u64>>,
-    pawn_attacks: Vec<Vec<u64>>,
-    king_attacks: Vec<u64>,
-    knight_attacks: Vec<u64>,
+    ray_attacks: Vec<Vec<Bitboard>>,
+    pawn_attacks: Vec<Vec<Bitboard>>,
+    king_attacks: Vec<Bitboard>,
+    knight_attacks: Vec<Bitboard>,
 
     pub zobrist_keys: ZobristKeys,
 }
@@ -42,8 +43,8 @@ impl Engine {
     //from, to, new board
     pub fn gen_moves(&self, board: &Board) -> Vec<Move> {
         let mut all_moves: Vec<Move> = vec![];
-        let mut possible: Vec<(usize, u64)> = vec![];
-        let mut possible_king: Vec<(usize, u64)> = vec![];
+        let mut possible: Vec<(usize, Bitboard)> = vec![];
+        let mut possible_king: Vec<(usize, Bitboard)> = vec![];
 
         //######### BASIC MOVE GEN #########
 
@@ -66,7 +67,7 @@ impl Engine {
         for i in pawns {
             let (from, moves) = self.gen_pawn_moves(&board, i, board.turn);
 
-            if moves & 0xff00000000000000 != 0 || moves & 0xff != 0 {
+            if moves & Bitboard::new(0xff00000000000000) != Bitboard::new(0) || moves & Bitboard::new(0xff) != Bitboard::new(0) {
                 let prmo_moves = board_serialize(moves);
                 for to in prmo_moves {
                     //all_moves.append(&mut (board.promote(from, to, &self.zobrist_keys))); //64 out of range, no piece
@@ -199,7 +200,7 @@ impl Engine {
     }
 
 
-    pub fn can_castle_through(&self, pos: u64, board: &Board) -> bool {
+    pub fn can_castle_through(&self, pos: Bitboard, board: &Board) -> bool {
         let sq = board_serialize(pos);
         let opp_color = !board.turn;
 
@@ -240,7 +241,7 @@ impl Engine {
         true
     }
 
-    pub fn gen_knight_moves(&self, board: &Board, sq: usize, turn: PieceColor) -> (usize, u64) {
+    pub fn gen_knight_moves(&self, board: &Board, sq: usize, turn: PieceColor) -> (usize, Bitboard) {
         let opp = match turn {
             PieceColor::White => board.pieces[PieceColor::Black],
             PieceColor::Black => board.pieces[PieceColor::White],
@@ -250,7 +251,7 @@ impl Engine {
         (sq, attacks)
     }
 
-    pub fn gen_king_moves(&self, board: &Board, sq: usize, turn: PieceColor) -> (usize, u64) {
+    pub fn gen_king_moves(&self, board: &Board, sq: usize, turn: PieceColor) -> (usize, Bitboard) {
         let opp = match turn {
             PieceColor::White => board.pieces[PieceColor::Black],
             PieceColor::Black => board.pieces[PieceColor::White],
@@ -261,11 +262,11 @@ impl Engine {
         (sq, attacks)
     }
 
-    pub fn gen_pawn_moves(&self, board: &Board, sq: usize, turn: PieceColor) -> (usize, u64) {
+    pub fn gen_pawn_moves(&self, board: &Board, sq: usize, turn: PieceColor) -> (usize, Bitboard) {
         self.gen_pawn_moves_raw(board, sq, turn, board.pieces[!turn])
 
     }
-    pub fn gen_pawn_moves_raw(&self, board: &Board, sq: usize, turn: PieceColor, opp_pieces: u64) -> (usize, u64) {
+    pub fn gen_pawn_moves_raw(&self, board: &Board, sq: usize, turn: PieceColor, opp_pieces: Bitboard) -> (usize, Bitboard) {
         let mut moves = 0;
         let piece = 1 << sq;
 
@@ -275,7 +276,7 @@ impl Engine {
                 moves = moves | (postshift::nort_one(moves) & !board.occupied);
             }
 
-            let mut en_pass: u64 = 0;
+            let mut en_pass: Bitboard = 0;
 
             if board.en_passant != 65 {
                 en_pass = 1 << board.en_passant;
@@ -291,7 +292,7 @@ impl Engine {
                 moves = moves | (postshift::sout_one(moves) & !board.occupied);
             }
 
-            let mut en_pass: u64 = 0;
+            let mut en_pass: Bitboard = 0;
 
             if board.en_passant != 65 {
                 en_pass = 1 << board.en_passant;
@@ -306,7 +307,7 @@ impl Engine {
         (sq, moves)
     }
 
-    pub fn gen_rook_moves(&self, board: &Board, sq: usize, pieces: u64) -> (usize, u64) {
+    pub fn gen_rook_moves(&self, board: &Board, sq: usize, pieces: Bitboard) -> (usize, Bitboard) {
         let all_moves = self.gen_ray_attacks(board.occupied, Dir::North, sq)
             | self.gen_ray_attacks(board.occupied, Dir::South, sq)
             | self.gen_ray_attacks(board.occupied, Dir::East, sq)
@@ -317,7 +318,7 @@ impl Engine {
         (sq, attack)
     }
 
-    pub fn gen_bishop_moves(&self, board: &Board, sq: usize, pieces: u64) -> (usize, u64) {
+    pub fn gen_bishop_moves(&self, board: &Board, sq: usize, pieces: Bitboard) -> (usize, Bitboard) {
         let all_moves = self.gen_ray_attacks(board.occupied, Dir::NOEA, sq)
             | self.gen_ray_attacks(board.occupied, Dir::NOWE, sq)
             | self.gen_ray_attacks(board.occupied, Dir::SOEA, sq)
@@ -328,14 +329,14 @@ impl Engine {
         (sq, attack)
     }
 
-    pub fn gen_queen_moves(&self, board: &Board, sq: usize, pieces: u64) -> (usize, u64) {
+    pub fn gen_queen_moves(&self, board: &Board, sq: usize, pieces: Bitboard) -> (usize, Bitboard) {
         let attack =
             self.gen_rook_moves(board, sq, pieces).1 | self.gen_bishop_moves(board, sq, pieces).1;
 
         (sq, attack)
     }
 
-    pub fn cal_check(&self, board: &Board, pos: usize, opp_color: PieceColor, inculde_pawn_diag: bool) -> (u64, u64) {
+    pub fn cal_check(&self, board: &Board, pos: usize, opp_color: PieceColor, inculde_pawn_diag: bool) -> (Bitboard, Bitboard) {
         //println!("S--------------------");
         //board.print_board();
         let mut check_real = 0;
@@ -387,7 +388,7 @@ impl Engine {
         (check_real, check_full)
     }
 
-    pub fn gen_king_attackables(&self, pos: usize) -> u64 {
+    pub fn gen_king_attackables(&self, pos: usize) -> Bitboard {
         let board = self.ray_attacks[Dir::North as usize][pos]
             | self.ray_attacks[Dir::NOEA as usize][pos]
             | self.ray_attacks[Dir::East as usize][pos]
@@ -402,22 +403,22 @@ impl Engine {
         board
     }
 
-    pub fn gen_check_info(&self, board: &Board, pos: usize, king_pos: usize) -> (u64, u64) {
+    pub fn gen_check_info(&self, board: &Board, pos: usize, king_pos: usize) -> (Bitboard, Bitboard) {
         let mut kingless = board.clone();
         kingless.occupied &= !board.kings[board.turn];
         kingless.kings[board.turn] = 0;
         kingless.pieces[board.turn] &= !board.kings[board.turn];
         //kingless.recalc_board();
 
-        let mut check_real: u64 = 0; //any piece other than the king need to occupied
-        let mut check_full: u64 = 0; //king can not be on
+        let mut check_real: Bitboard = 0; //any piece other than the king need to occupied
+        let mut check_full: Bitboard = 0; //king can not be on
 
         match board.lookup(pos) {
             Some ((_, pt)) => {
                 match pt {
                     PieceType::Pawn => {
                         //TODO ACCOUNT FOR ALL!!! PIECES IN THIS MATCH
-                        check_real = 0; //self pos added on return //1 << pos;//self.gen_pawn_moves(&board, pos, !board.turn);
+                        check_real = Bitboard::new(0); //self pos added on return //1 << pos;//self.gen_pawn_moves(&board, pos, !board.turn);
                         let (_, check_full_pre) = self.gen_pawn_moves(&board, pos, !board.turn);
                         check_full = check_full_pre
                             & !(self.ray_attacks[Dir::North as usize][pos]
@@ -471,9 +472,9 @@ impl Engine {
         (check_real | (1 << pos), check_full)
     }
 
-    pub fn gen_ray_attacks(&self, occupied: u64, dir: Dir, square: usize) -> u64 {
+    pub fn gen_ray_attacks(&self, occupied: Bitboard, dir: Dir, square: usize) -> Bitboard {
         let set = &self.ray_attacks[dir as usize];
-        let mut attack: u64 = set[square];
+        let mut attack: Bitboard = set[square];
         let block = attack & occupied;
         if block != 0 {
             let stop: usize;
@@ -495,24 +496,24 @@ fn dir_is_pos(dir: Dir) -> bool {
     }
 }
 
-fn gen_ray_attacks() -> Vec<Vec<u64>> {
-    let mut attacks: Vec<Vec<u64>> = vec![vec![0; 64]; 8];
+fn gen_ray_attacks() -> Vec<Vec<Bitboard>> {
+    let mut attacks: Vec<Vec<Bitboard>> = vec![vec![0; 64]; 8];
 
     //North
-    let mut nort: u64 = 0x0101010101010100;
+    let mut nort: Bitboard = Bitboard::new(0x0101010101010100);
     for i in 0..64 {
         attacks[Dir::North as usize][i as usize] = nort;
         nort <<= 1;
     }
     //South
-    let mut south: u64 = 0x80808080808080;
+    let mut south: Bitboard = 0x80808080808080;
     for i in (0..64).rev() {
         attacks[Dir::South as usize][i as usize] = south;
         south >>= 1;
     }
 
     //East
-    let mut east: u64;
+    let mut east: Bitboard;
     for i in 0..8 {
         east = 0xfe << (8 * i);
         for ii in 0..8 {
@@ -522,7 +523,7 @@ fn gen_ray_attacks() -> Vec<Vec<u64>> {
     }
 
     //West
-    let mut west: u64;
+    let mut west: Bitboard;
     for i in 0..8 {
         west = 0x7f << (8 * i);
         for ii in 0..8 {
@@ -543,7 +544,7 @@ fn gen_ray_attacks() -> Vec<Vec<u64>> {
     }
 
     //nowe
-    let mut nowe: u64;
+    let mut nowe: Bitboard;
     for i in 0..8 {
         nowe = 0x102040810204000 << (8 * i);
         for ii in 0..8 {
@@ -554,7 +555,7 @@ fn gen_ray_attacks() -> Vec<Vec<u64>> {
     }
 
     //soea
-    let mut soea: u64;
+    let mut soea: Bitboard;
     for i in (0..8).rev() {
         soea = 0x2040810204080 >> (8 * (7 - i));
         for ii in 0..8 {
@@ -565,7 +566,7 @@ fn gen_ray_attacks() -> Vec<Vec<u64>> {
     }
 
     //sowe
-    let mut sowe: u64;
+    let mut sowe: Bitboard;
     for i in (0..8).rev() {
         sowe = 0x40201008040201 >> (8 * (7 - i));
         for ii in 0..8 {
@@ -578,8 +579,8 @@ fn gen_ray_attacks() -> Vec<Vec<u64>> {
     attacks
 }
 
-fn gen_pawn_attacks() -> Vec<Vec<u64>> {
-    let mut attacks: Vec<Vec<u64>> = vec![vec![0; 64]; 2];
+fn gen_pawn_attacks() -> Vec<Vec<Bitboard>> {
+    let mut attacks: Vec<Vec<Bitboard>> = vec![vec![0; 64]; 2];
 
     for i in 8..56 {
         let bb = 1 << i;
@@ -598,8 +599,8 @@ fn gen_pawn_attacks() -> Vec<Vec<u64>> {
     attacks
 }
 
-fn gen_king_attacks() -> Vec<u64> {
-    let mut attacks: Vec<u64> = vec![0; 64];
+fn gen_king_attacks() -> Vec<Bitboard> {
+    let mut attacks: Vec<Bitboard> = vec![0; 64];
 
     for i in 0..64 {
         let mut pos = 1 << i;
@@ -613,8 +614,8 @@ fn gen_king_attacks() -> Vec<u64> {
     attacks
 }
 
-fn gen_knight_attacks() -> Vec<u64> {
-    let mut attacks: Vec<u64> = vec![0; 64];
+fn gen_knight_attacks() -> Vec<Bitboard> {
+    let mut attacks: Vec<Bitboard> = vec![0; 64];
 
     for i in 0..64 {
         let pos = 1 << i;
