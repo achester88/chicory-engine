@@ -1,6 +1,6 @@
 use crate::chicory::bitboard::postshift;
 use crate::chicory::board::Move;
-use super::bitboard::{Bitboard, board_serialize};
+use super::bitboard::{Bitboard};
 use super::board::*;
 use super::utils::*;
 use super::tables::ZobristKeys;
@@ -48,28 +48,23 @@ impl Engine {
 
         //######### BASIC MOVE GEN #########
 
-        let queens = board_serialize(board.queens[board.turn]);
-        for i in queens {
+        for i in board.queens[board.turn] {
             possible.push(self.gen_queen_moves(&board, i, board.pieces[board.turn]));
         }
 
-        let bishops = board_serialize(board.bishops[board.turn]);
-        for i in bishops {
+        for i in board.bishops[board.turn] {
             possible.push(self.gen_bishop_moves(&board, i, board.pieces[board.turn]));
         }
 
-        let rooks = board_serialize(board.rooks[board.turn]);
-        for i in rooks {
+        for i in board.rooks[board.turn] {
             possible.push(self.gen_rook_moves(&board, i, board.pieces[board.turn]));
         }
 
-        let pawns = board_serialize(board.pawns[board.turn]);
-        for i in pawns {
+        for i in board.pawns[board.turn] {
             let (from, moves) = self.gen_pawn_moves(&board, i, board.turn);
 
             if (moves & Bitboard::new(0xff00000000000000) ) != Bitboard::new(0) || (moves & Bitboard::new(0xff)) != Bitboard::new(0) {
-                let prmo_moves = board_serialize(moves);
-                for to in prmo_moves {
+                for to in moves {
                     //all_moves.append(&mut (board.promote(from, to, &self.zobrist_keys))); //64 out of range, no piece
                     all_moves.push(Move {from: from, to: to, promote_to: Some(PieceType::Knight), move_type: MoveType::Promotion});
                     all_moves.push(Move {from: from, to: to, promote_to: Some(PieceType::Bishop), move_type: MoveType::Promotion});
@@ -81,14 +76,11 @@ impl Engine {
             }
         }
 
-        let kings = board_serialize(board.kings[board.turn]);
         if !board.check_real.is_empty() {
-            for i in kings {
+            for i in board.kings[board.turn] {
                 let (from, moves) = self.gen_king_moves(&board, i, board.turn);
-                let moves_to = board_serialize(moves);
 
-                for i in 0..moves_to.len() {
-                    let to = moves_to[i];
+                for to in moves {
 
                     if (Bitboard::new(1 << to) & board.check_full).is_empty() {
                         //let mut new_move = board.move_piece(to, from, &self.zobrist_keys);
@@ -100,14 +92,13 @@ impl Engine {
                 }
             }
         } else {
-            for i in kings {
+            for i in board.kings[board.turn] {
                 //print_bitboard_pos(board.check_full, i);
                 possible_king.push(self.gen_king_moves(&board, i, board.turn));
             }
         }
 
-        let knight = board_serialize(board.knights[board.turn]);
-        for i in knight {
+        for i in board.knights[board.turn] {
             possible.push(self.gen_knight_moves(&board, i, board.turn));
         }
 
@@ -155,17 +146,14 @@ impl Engine {
             }
         }
 
-        //let king_pos = bit_scan(board.kings[!board.turn]);//board_serialize(board.kings[!board.turn]);
-
         //######### New Board Gen Loop #########
 
 
         for i in 0..possible.len() {
             let (from, moves) = possible[i];
-            let moves_to = board_serialize(moves);
 
-            for ii in 0..moves_to.len() {
-                let to = moves_to[ii];
+            for to in moves {
+                //let to = moves_to[ii];
 
                 if not_check || !(board.check_real & Bitboard::new(1 << to)).is_empty() {
                     //Not in check or to is in (check)
@@ -177,10 +165,9 @@ impl Engine {
 
         for i in 0..possible_king.len() {
             let (from, moves) = possible_king[i];
-            let moves_to = board_serialize(moves);
 
-            for ii in 0..moves_to.len() {
-                let to = moves_to[ii];
+            for to in moves {
+                //let to = moves_to[ii];
                 //println!("S--------[{}]------------", to);
 
                 //if not_check || board.check_real & (1 << to) != 0 {
@@ -201,17 +188,14 @@ impl Engine {
 
 
     pub fn can_castle_through(&self, pos: Bitboard, board: &Board) -> bool {
-        let sq = board_serialize(pos);
         let opp_color = !board.turn;
 
-        for i in sq {
+        for i in pos {
             let attackable_check_pos = self.gen_king_attackables(i);
 
             let hits = attackable_check_pos & board.pieces[!board.turn];
 
-            let hits_pos = board_serialize(hits);
-
-            for to in hits_pos {
+            for to in hits {
                 if !(Bitboard::new(1 << to) & attackable_check_pos).is_empty() {
                     match board.lookup(to) {
                         Some((_, pt)) => {
@@ -345,10 +329,7 @@ impl Engine {
 
         let hits = attackable_check_pos & board.pieces[opp_color];
 
-        let hits_pos = board_serialize(hits);
-
-
-        for to in hits_pos {
+        for to in hits {
             if !(Bitboard::new(1 << to) & attackable_check_pos).is_empty() {
                 //let (_, pt) = board.lookup(to);
                 match board.lookup(to) {
@@ -369,7 +350,7 @@ impl Engine {
                             PieceType::Queen => self.gen_queen_moves(&board, to, board.pieces[opp_color]),
                             PieceType::King => self.gen_king_moves(&board, to, opp_color),
                         };
-                        if (att & Bitboard::new(1 << pos)).is_empty() {
+                        if !(att & Bitboard::new(1 << pos)).is_empty() {
                             // println!("HITTTTTT at {}", pos);
                             let (cr, cf) = self.gen_check_info(&board, to, pos);
                             //TODO SET R AND F TO ONLY SAME RANK/FILE OF KING

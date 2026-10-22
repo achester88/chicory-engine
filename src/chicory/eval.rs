@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use crate::chicory::bitboard::board_serialize;
 use crate::chicory::board::{Board, Move, PieceColor};
 use crate::chicory::engine::Engine;
 use crate::chicory::tables::{Entry, Flag};
@@ -495,8 +494,8 @@ pub fn eval(board: &Board) -> i32 {
 
     score += white_mat_score - black_mat_score;
 
-    score += ((board_serialize(board.kings[PieceColor::White]).len() as i32)
-        - (board_serialize(board.kings[PieceColor::Black]).len() as i32))
+    score += ( (board.kings[PieceColor::White].count_ones() as i32)
+        - (board.kings[PieceColor::Black].count_ones() as i32) )
         * 20000;
 
     score += bit_cal(board.pawns[PieceColor::White], WHITE_PAWN_PS_TABLE)

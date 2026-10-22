@@ -1,6 +1,5 @@
 #[allow(unused_imports)]
 use super::bitboard::{print_bitboard, print_bitboard_pos};
-use crate::chicory::bitboard::board_serialize;
 use crate::chicory::engine::Engine;
 use crate::chicory::utils::bit_scan;
 use core::ops::{Index, IndexMut, Not};
@@ -267,9 +266,9 @@ impl Board {
 
         let king_board = new_board.kings[new_board.turn];
         if king_board.val != 0 {
-            let king_pos = board_serialize(king_board);
+            let king_pos = king_board.bit_scan();
 
-            let (cr, cf) = engine.cal_check(&new_board, king_pos[0], !new_board.turn, false);
+            let (cr, cf) = engine.cal_check(&new_board, king_pos, !new_board.turn, false);
 
             new_board.check_real = cr;
             new_board.check_full = cf;
@@ -876,7 +875,7 @@ impl Board {
     }
 
    pub fn is_legal(&self, engine: &Engine) -> bool {
-        let king_pos = board_serialize(self.kings[!self.turn])[0];
+       let king_pos = self.kings[!self.turn].bit_scan();
         let (cr, _) = engine.cal_check(&self, king_pos, self.turn, true); 
         if cr.val != 0 {
             return false;

@@ -22,18 +22,28 @@ impl Bitboard {
     pub fn count_ones(&self) -> usize {
         self.val.count_ones() as usize
     }
+
+    pub fn bit_scan(&self) -> usize {
+        if !self.is_empty() {
+            return self.val.trailing_zeros() as usize;
+        }
+
+        0
+    }
 }
 
 impl Iterator for Bitboard {
-    type Item = u32;
+    type Item = usize;
     fn next(&mut self) -> Option<Self::Item> {
         if self.val == 0 {
             return None;
         }
 
         let val = self.val.trailing_zeros();
-        self.val & !(1 << val);
-        return Some(val);
+
+        self.val &= self.val - 1;
+
+        return Some(val as usize);
     }
 }
 
@@ -151,6 +161,7 @@ pub mod postshift {
     }
 }
 
+/*
 pub fn board_serialize(bitboard: Bitboard) -> Vec<usize> {
     let mut board = bitboard;
     let mut pos: Vec<usize> = vec![];
@@ -163,6 +174,7 @@ pub fn board_serialize(bitboard: Bitboard) -> Vec<usize> {
     }
     pos
 }
+ */
 
 #[allow(dead_code)]
 pub fn print_bitboard(bitboard: Bitboard) {
