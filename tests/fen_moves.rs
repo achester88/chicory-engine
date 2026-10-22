@@ -1,3 +1,4 @@
+use chicory::chicory::bitboard::Bitboard;
 use chicory::chicory::board::{Board, Move};
 use chicory::chicory::engine::Engine;
 
@@ -257,8 +258,8 @@ fn king_to_check() {
 
     let mut checked_board = Board::new("5k2/4P3/8/8/8/8/8/3K4 b - - 1 1", &eng);
 
-    checked_board.check_real = 0x10000000000000; //check_real;
-    checked_board.check_full = 0x2000000000000000;
+    checked_board.check_real = Bitboard::new(0x10000000000000); //check_real;
+    checked_board.check_full = Bitboard::new(0x2000000000000000);
 
     fen_moves.push(OldMove{from: 44, to: 52, board: checked_board, promote_to: None, capture: false});
 
@@ -293,8 +294,8 @@ fn king_to_check_next() {
 
     let mut checked_board = Board::new("5k2/4P3/8/8/8/8/8/3K4 b - - 1 1", &eng);
 
-    checked_board.check_real = 0x10000000000000; //check_real;
-    checked_board.check_full = 0x2000000000000000;
+    checked_board.check_real = Bitboard::new(0x10000000000000); //check_real;
+    checked_board.check_full = Bitboard::new(0x2000000000000000);
 
     fen_moves.push(OldMove{from: 44, to: 52, board: checked_board, promote_to: None, capture: false});
 
@@ -365,8 +366,8 @@ fn king_castling() {
 
     let mut checked_board = Board::new("4k2R/8/8/8/8/8/8/4K3 b - - 1 1", &eng);
 
-    checked_board.check_real = 0xe000000000000000; //check_real;
-    checked_board.check_full = 0x7f80808080808080;
+    checked_board.check_real = Bitboard::new(0xe000000000000000); //check_real;
+    checked_board.check_full = Bitboard::new(0x7f80808080808080);
 
     fen_moves.push(OldMove{from: 7, to: 63, board: checked_board, promote_to: None, capture: false});
 

@@ -1,6 +1,6 @@
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
-
+use crate::chicory::bitboard::Bitboard;
 use crate::chicory::board::Move;
 use super::board::{Board, PieceColor};
 
@@ -108,13 +108,13 @@ fn gen_color_board_random() -> [[u64; 64]; 2] {
     arr
 }
 
-fn xor_board(zorb: &mut u64, bitboards: [u64; 2], keys: [[u64; 64]; 2]) {
+fn xor_board(zorb: &mut u64, bitboards: [Bitboard; 2], keys: [[u64; 64]; 2]) {
    for color in 0..2 {
        let mut bitboard = bitboards[color];
-       while bitboard != 0 {
-           let i = bitboard.trailing_zeros() as usize;
+       while !bitboard.is_empty() {
+           let i = bitboard.val.trailing_zeros() as usize;
            *zorb ^= keys[color][i];
-           bitboard ^= 1 << i;
+           bitboard = bitboard ^ Bitboard::new(1 << i);
        }
    }
 

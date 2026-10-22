@@ -7,6 +7,7 @@ use crate::chicory::tables::{Entry, Flag};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::MutexGuard;
 use std::time::Instant;
+use crate::chicory::bitboard::Bitboard;
 
 const BLACK_PAWN_PS_TABLE: [i32; 64] = [
     0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30, 20, 10, 10, 5, 5,
@@ -182,7 +183,7 @@ pub fn minmax(
             positions_reached.insert(board.zobrist_hash, init_pos_count);
         }
 
-        if board.check_real == 0 { //Stalemate
+        if board.check_real.is_empty() { //Stalemate
             return (0, None, 1, vec![]);
         }
 
@@ -361,7 +362,7 @@ pub fn stopping_search(
 
     if moves.is_empty() {
 
-        if board.check_real == 0 {
+        if board.check_real.is_empty() {
             return (0, None, 1, vec![]);
         }
 
@@ -372,7 +373,7 @@ pub fn stopping_search(
     }
 
     if moves.len() == 0 {
-        if board.check_real == 0 { //Stalemate
+        if board.check_real.is_empty() { //Stalemate
             return (0, None, 1, vec![]);
         }
         return match turn {
@@ -532,12 +533,12 @@ pub fn eval(board: &Board) -> i32 {
     score
 }
 
-fn bit_cal(mut bitboard: u64, table: [i32; 64]) -> i32 {
+fn bit_cal(mut bitboard: Bitboard, table: [i32; 64]) -> i32 {
     let mut score = 0;
-    while bitboard != 0 {
-        let i = bitboard.trailing_zeros() as usize;
+    while !bitboard.is_empty() {
+        let i = bitboard.val.trailing_zeros() as usize;
         score += table[i];
-        bitboard ^= 1 << i;
+        bitboard = bitboard ^ Bitboard::new(1 << i);
     }
 
     score

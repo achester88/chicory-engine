@@ -908,7 +908,7 @@ impl Board {
         self.capture = did_capture_occur;
 
         if self.kings[self.turn] != Bitboard::new(0) {
-            let king_pos = bit_scan(self.kings[self.turn].val);//board_serialize(self.kings[self.turn]);
+            let king_pos = bit_scan(self.kings[self.turn]);//board_serialize(self.kings[self.turn]);
             let (cr, cf) = engine.cal_check(&self, king_pos, !self.turn, false);
             self.check_real = cr;
             self.check_full = cf;

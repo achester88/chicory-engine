@@ -1,9 +1,9 @@
 use super::utils::bit_scan;
-use std::ops::{BitAnd, Shl, Shr, BitOr, BitAndAssign, BitOrAssign};
+use std::ops::{BitAnd, Shl, Shr, BitOr, BitAndAssign, BitOrAssign, BitXor};
 use std::ops::Not;
 
-pub const NOTAFILE: u64 = 0xfefefefefefefefe; // ~0x0101010101010101
-pub const NOTHFILE: u64 = 0x7f7f7f7f7f7f7f7f; // ~0x8080808080808080
+pub const NOTAFILE: Bitboard = Bitboard {val: 0xfefefefefefefefe}; // ~0x0101010101010101
+pub const NOTHFILE: Bitboard = Bitboard {val: 0x7f7f7f7f7f7f7f7f}; // ~0x8080808080808080
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Bitboard {
@@ -13,6 +13,14 @@ pub struct Bitboard {
 impl Bitboard {
     pub fn new(val: u64) -> Self {
         Bitboard {val}
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.val == 0
+    }
+
+    pub fn count_ones(&self) -> usize {
+        self.val.count_ones() as usize
     }
 }
 
@@ -32,6 +40,26 @@ impl Iterator for Bitboard {
 impl BitAnd<Bitboard> for Bitboard {
     type Output = Bitboard;
     fn bitand(self, other: Bitboard) -> Bitboard {
+        Bitboard {val: self.val & other.val}
+    }
+}
+impl BitAnd<Bitboard> for &Bitboard {
+    type Output = Bitboard;
+    fn bitand(self, other: Bitboard) -> Bitboard {
+        Bitboard {val: self.val & other.val}
+    }
+}
+
+impl BitAnd<&Bitboard> for Bitboard {
+    type Output = Bitboard;
+    fn bitand(self, other: &Bitboard) -> Bitboard {
+        Bitboard {val: self.val & other.val}
+    }
+}
+
+impl BitAnd<&Bitboard> for &Bitboard {
+    type Output = Bitboard;
+    fn bitand(self, other: &Bitboard) -> Bitboard {
         Bitboard {val: self.val & other.val}
     }
 }
@@ -80,38 +108,46 @@ impl Shl<u8> for Bitboard {
     }
 }
 
+impl BitXor<Bitboard> for Bitboard {
+    type Output = Bitboard;
+
+    fn bitxor(self, other: Bitboard) -> Bitboard {
+        Bitboard {val: self.val ^ other.val}
+    }
+}
+
 pub mod postshift {
     use super::{Bitboard, NOTAFILE, NOTHFILE};
 
     pub fn east_one(b: Bitboard) -> Bitboard {
 
-        Bitboard::new((b.val << 1) & NOTAFILE)
+        (b << 1) & NOTAFILE
     }
     pub fn no_ea_one(b: Bitboard) -> Bitboard {
 
-        Bitboard::new((b.val << 9) & NOTAFILE)
+        (b << 9) & NOTAFILE
     }
     pub fn so_ea_one(b: Bitboard) -> Bitboard {
-        Bitboard::new((b.val >> 7) & NOTAFILE)
+        (b >> 7) & NOTAFILE
     }
     pub fn west_one(b: Bitboard) -> Bitboard {
 
-        Bitboard::new((b.val >> 1) & NOTHFILE)
+        (b >> 1) & NOTHFILE
     }
     pub fn so_we_one(b: Bitboard) -> Bitboard {
 
-        Bitboard::new(b.val >> 9 & NOTHFILE)
+        b >> 9 & NOTHFILE
     }
     pub fn no_we_one(b: Bitboard) -> Bitboard {
 
-        Bitboard::new((b.val << 7) & NOTHFILE)
+        (b << 7) & NOTHFILE
     }
     pub fn sout_one(b: Bitboard) -> Bitboard {
 
-        Bitboard::new(b.val >> 8)
+        b >> 8
     }
     pub fn nort_one(b: Bitboard) -> Bitboard {
-        Bitboard::new(b.val << 8)
+        b << 8
     }
 }
 
@@ -120,7 +156,7 @@ pub fn board_serialize(bitboard: Bitboard) -> Vec<usize> {
     let mut pos: Vec<usize> = vec![];
 
     while board.val != 0 {
-        let i = bit_scan(board.val);
+        let i = bit_scan(board);
         pos.push(i);
 
         board.val = board.val & (board.val - 1)
