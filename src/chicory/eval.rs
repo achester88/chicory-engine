@@ -211,6 +211,7 @@ pub fn minmax(
     for m in moves {
 
         let lmi = board.make_move(eng, m);
+        let was_capture = board.capture.is_some();
 
         if !board.is_legal(eng) {
             board.unmake_move(m, eng, lmi);
@@ -232,7 +233,7 @@ pub fn minmax(
             transposition_table,
             None,
             false,
-            lmi.capture.is_some(),
+            was_capture,
             master_ancient_node
         );
         node_count += nodes;
@@ -390,12 +391,13 @@ pub fn stopping_search(
     for m in moves {
 
         let lmi = board.make_move(eng, m);
+        let was_capture = board.capture.is_some();
 
         if !board.is_legal(eng) {
             board.unmake_move(m, eng, lmi);
         } else {
 
-        if lmi.capture.is_some() { //|| m.board.check_real != 0
+        if was_capture { //|| m.board.check_real != 0
             let (score, _, nodes, _pv) = stopping_search(
                 &eng,
                 board,

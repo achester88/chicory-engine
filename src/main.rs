@@ -157,8 +157,8 @@ fn main() {
 
                         //let (_, _, board, _) = cur_best_move.unwrap(); //*best_move_lock;
                         println!("bestmove {}", Board::move_to_lan(&cur_best_move.unwrap()));
-                        cal_board.make_move(&eng, cur_best_move.unwrap());
-                        *board_ref.lock().unwrap() = Some(cal_board);
+                        //cal_board.make_move(&eng, cur_best_move.unwrap());
+                        //*board_ref.lock().unwrap() = Some(cal_board);
 
                         //let zh = cur_best_move.unwrap().board.zobrist_hash;
                         

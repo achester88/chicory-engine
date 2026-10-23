@@ -4,6 +4,7 @@ use crate::chicory::engine::Engine;
 use crate::chicory::utils::bit_scan;
 use core::ops::{Index, IndexMut, Not};
 use crate::chicory::bitboard::Bitboard;
+use crate::chicory::board::PieceType::King;
 //use crate::chicory::board::MoveType::Move;
 use crate::chicory::tables::ZobristKeys;
 
@@ -847,7 +848,7 @@ impl Board {
         [Board::pos_to_lan(cur_move.from), Board::pos_to_lan(cur_move.to), promo_to].join("")
     }
 
-    pub fn lan_to_move(str: &str) -> Move { //NOTE: ASSUMES THERE WAS NO CAPTURE
+    pub fn lan_to_move(&self, str: &str) -> Move { //NOTE: ASSUMES THERE WAS NO CAPTURE
         let from: usize;
         let to: usize;
         let mut promote_to = None;
@@ -871,6 +872,27 @@ impl Board {
                 move_type: MoveType::Promotion
             }
         }
+
+        if from == 4 && (to == 2 || to == 6) {
+            let (_, pt) = self.lookup(from).unwrap();
+            if pt == PieceType::King {
+                return if (to == 2) {
+                    Move { from, to, promote_to, move_type: MoveType::CastleQueenSide }
+                } else {
+                    Move { from, to, promote_to, move_type: MoveType::CastleKingSide }
+                }
+            }
+        } else if from == 60 && (to == 58 || to == 62) {
+            let (_, pt) = self.lookup(from).unwrap();
+            if pt == PieceType::King {
+                return if (to == 58) {
+                    Move { from, to, promote_to, move_type: MoveType::CastleQueenSide }
+                } else {
+                    Move { from, to, promote_to, move_type: MoveType::CastleKingSide }
+                }
+            }
+        }
+
           return Move { from, to, promote_to, move_type: MoveType::Move };
     }
 

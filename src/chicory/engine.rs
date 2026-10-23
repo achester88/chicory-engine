@@ -121,7 +121,7 @@ impl Engine {
                     {
                         //queenside
                         //all_moves.push(board.castle(88, &self.zobrist_keys));
-                        all_moves.push( Move { from: 4, to: 3, promote_to: None, move_type: MoveType::CastleQueenSide } );
+                        all_moves.push( Move { from: 4, to: 2, promote_to: None, move_type: MoveType::CastleQueenSide } );
                     }
                     if board.castling & 0b0100 == 0b0100
                         && (board.occupied & Bitboard::new(0x60)).is_empty()

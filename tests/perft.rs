@@ -336,7 +336,7 @@ a5a4: 15"), 2);
 fn p3_two_one_string_check() {
     let engine = Engine::new();
     let mut board = Board::new("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", &engine);
-    board.make_move(&engine, Board::lan_to_move("e2e4"));
+    board.make_move(&engine, board.lan_to_move("e2e4"));
     board.print_board();
     let pass = perft_from_string(&engine, &mut board, String::from("f4f3: 1
 d6d5: 1
