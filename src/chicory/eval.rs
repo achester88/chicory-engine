@@ -192,7 +192,7 @@ pub fn minmax(
         };
     }
 
-    let mut best_move = moves[0];
+    let mut best_move = None;//moves[0];
 
     let mut best_pv: Vec<Move> = vec![];
 
@@ -237,20 +237,20 @@ pub fn minmax(
             master_ancient_node
         );
         node_count += nodes;
-
+            
         match turn {
             PieceColor::White => {
-                if score > best {
+                if  best_move.is_none() || score > best {
                     best = score;
-                    best_move = m;
+                    best_move = Some(m);
                     best_pv = pv
                 }
                 alpha = alpha.max(score);
             }
             PieceColor::Black => {
-                if score < best {
+                if  best_move.is_none() || score < best {
                     best = score;
-                    best_move = m;
+                    best_move = Some(m);
                     best_pv = pv;
                 }
                 beta = beta.min(score);
@@ -280,7 +280,7 @@ pub fn minmax(
     }
 
 
-    best_pv.insert(0, best_move);
+    best_pv.insert(0, best_move.unwrap());
 
     if top && !early_stop {
 
@@ -308,7 +308,7 @@ pub fn minmax(
             flag: flag,
             eval: best,
             // ancient: master_ancient_node,
-            move_info: best_move,
+            move_info: best_move.unwrap(),
         });
     }
 
@@ -318,7 +318,7 @@ pub fn minmax(
         positions_reached.insert(board.zobrist_hash, init_pos_count);
     }
 
-    (best, Some(best_move), node_count, best_pv)
+    (best, best_move, node_count, best_pv)
 }
 
 pub fn stopping_search(
