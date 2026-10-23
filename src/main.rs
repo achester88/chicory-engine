@@ -55,6 +55,7 @@ fn main() {
             "quit" => interface.quit(),
             "setoption" => interface.set_option(commands),
             "perft" => interface.perft(commands),
+            "printboard" => interface.print_board(),
             _ => None,
         };
 
@@ -214,6 +215,21 @@ fn main() {
                         );
                     });
                 },
+
+                Cmd::PrintBoard => {
+                    let board_ref = interface.current_board.clone();
+                    let board = { board_ref.lock().unwrap().clone() };
+
+                    match board {
+                        Some(board) => {
+                            board.print_board();
+                        },
+                        None => {
+                            println!("[ No Current Board ]");
+                        }
+                    }
+                },
+
             }
         }
     }

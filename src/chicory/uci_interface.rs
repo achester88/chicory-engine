@@ -13,6 +13,7 @@ pub enum Cmd {
     Stop,
     Go(SearchInfo),
     Perft(usize),
+    PrintBoard
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -209,5 +210,9 @@ impl UciInterface {
         let depth = command[1].parse::<usize>().unwrap();
 
         Some(Cmd::Perft(depth))
+    }
+    
+    pub fn print_board(&self) -> Option<Cmd> {
+        Some(Cmd::PrintBoard)
     }
 }

@@ -280,6 +280,24 @@ pub fn minmax(
     }
 
 
+
+    if best_move.is_none() {
+        if init_pos_count == 0 {
+            positions_reached.remove(&board.zobrist_hash);
+        } else {
+            positions_reached.insert(board.zobrist_hash, init_pos_count);
+        }
+
+        if board.check_real.is_empty() { //Stalemate
+            return (0, None, 1, vec![]);
+        }
+
+        return match turn {
+            PieceColor::White => (i32::MIN, None, 1, vec![]),
+            PieceColor::Black => (i32::MAX, None, 1, vec![]),
+        };
+    }
+
     best_pv.insert(0, best_move.unwrap());
 
     if top && !early_stop {
