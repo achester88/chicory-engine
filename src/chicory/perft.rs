@@ -2,30 +2,41 @@ use crate::chicory::board::Board;
 use crate::chicory::engine::Engine;
 use std::sync::mpsc;
 use std::thread;
-pub fn perft(eng: &Engine, board: Board, depth: usize) -> usize {
+pub fn perft(eng: &Engine, board: &mut Board, depth: usize) -> usize {
     let mut count = 0;
+
+    if !board.is_legal(&eng) {
+        return 0;
+    }
 
     if depth == 0 {
         return 1;
     }
 
-    let moves = eng.gen_moves(board);
+    let moves = eng.gen_moves(&board);
+
     for m in moves {
-        count += perft(eng, m.board, depth - 1);
+        let lmi = board.make_move(eng, m);
+        //if(board.is_legal(&eng)) {
+            count += perft(eng, board, depth - 1);
+        //}
+        board.unmake_move(m, eng, lmi);
     }
 
     count
 }
 #[allow(dead_code)]
 pub fn multi_perft(eng: &Engine, board: Board, depth: usize, thread_count: usize) -> usize {
+    //println!("D: {}", depth);
     if depth == 0 {
         return 1;
     }
 
-    let moves = eng.gen_moves(board);
+    let moves = eng.gen_moves(&board);
 
     if depth == 1 {
-        return moves.len();
+        let mut owned_board = board.clone();
+        return perft(eng, &mut owned_board, 1);
     }
 
     let mut chunks = vec![vec!(); thread_count];
@@ -43,16 +54,23 @@ pub fn multi_perft(eng: &Engine, board: Board, depth: usize, thread_count: usize
     }
 
     let (tx, rx) = mpsc::channel();
-
+    
     thread::scope(|s| {
         for n in 0..thread_count {
             let set = chunks[n].clone();
             let ctx = tx.clone();
+            let mut owned_board = board.clone();
             s.spawn(move || {
                 let mut count = 0;
-
+    
+                //let mut owned_board = board.clone();
+                
                 for m in set {
-                    count += perft(eng, m.board, depth - 1);
+                    let lmi = owned_board.make_move(eng, m);
+                    if owned_board.is_legal(&eng) {
+                        count += perft(eng, &mut owned_board, depth - 1);
+                    }
+                    owned_board.unmake_move(m, eng, lmi);
                 }
                 ctx.send(count).unwrap();
             });
@@ -75,7 +93,7 @@ pub fn multi_perft(eng: &Engine, board: Board, depth: usize, thread_count: usize
 
 pub fn multi_perft_list(
     eng: &Engine,
-    board: Board,
+    board: &mut Board,
     depth: usize,
     thread_count: usize,
 ) -> (usize, Vec<(String, usize)>) {
@@ -83,12 +101,18 @@ pub fn multi_perft_list(
     let mut result = vec![];
     let mut total = 0;
 
-    let moves = eng.gen_moves(board);
+    let moves = eng.gen_moves(&board);
     for m in moves {
-
-        let child_total = multi_perft(&eng, m.board, depth - 1, thread_count);
+        let lmi = board.make_move(eng, m);
+        if board.is_legal(&eng) {
+        
+        let child_total = multi_perft(&eng, board.clone(), depth - 1, thread_count);
+        //board.unmake_move(m, eng);
         result.push((Board::move_to_lan(&m), child_total));
         total += child_total;
+        }
+
+        board.unmake_move(m, eng, lmi);
     }
 
     (total, result)

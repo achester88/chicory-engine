@@ -36,6 +36,8 @@ fn main() {
         .create(true) // Creates the file if it doesn't exist
         .open(log_name).unwrap();
     */
+    let mut master_ancient_node = true;
+    let mut man_flip_counter = 0;
 
     loop {
         let _ = stdout().flush();
@@ -53,6 +55,7 @@ fn main() {
             "quit" => interface.quit(),
             "setoption" => interface.set_option(commands),
             "perft" => interface.perft(commands),
+            "printboard" => interface.print_board(),
             _ => None,
         };
 
@@ -69,7 +72,7 @@ fn main() {
                     thread::spawn(move || {
                         let move_timer = Instant::now();
                         let board = { board_ref.lock().unwrap().clone() };
-                        let cal_board = board.unwrap();
+                        let mut cal_board = board.unwrap();
                         let mut positions_reached = positions_reached_ref.lock().unwrap();
                         let mut transposition_table = transposition_table_ref.lock().unwrap();
 
@@ -118,7 +121,7 @@ fn main() {
                         {
                             let (_, best_move, _, _) = minmax(
                                 &eng,
-                                cal_board,
+                                &mut cal_board.clone(),
                                 depth,
                                 i32::MIN,
                                 i32::MAX,
@@ -131,7 +134,8 @@ fn main() {
                                 &mut transposition_table,
                                 cur_best_move,
                                 true,
-                                false
+                                false,
+                                master_ancient_node
                             );
 
                             if time_per_move != 0.0
@@ -154,7 +158,8 @@ fn main() {
 
                         //let (_, _, board, _) = cur_best_move.unwrap(); //*best_move_lock;
                         println!("bestmove {}", Board::move_to_lan(&cur_best_move.unwrap()));
-                        *board_ref.lock().unwrap() = Some(cur_best_move.unwrap().board);
+                        //cal_board.make_move(&eng, cur_best_move.unwrap());
+                        //*board_ref.lock().unwrap() = Some(cal_board);
 
                         //let zh = cur_best_move.unwrap().board.zobrist_hash;
                         
@@ -171,6 +176,11 @@ fn main() {
 
                         stop_calculation_clone.store(false, Ordering::Relaxed);
                     });
+
+                    man_flip_counter += 1;
+                    if man_flip_counter == 4 {
+                        master_ancient_node = !master_ancient_node;
+                    }
                 }
                 Cmd::Set(board) => { //
                     //writeln!(file, "----POS READ AS: {:?}", board);
@@ -187,10 +197,10 @@ fn main() {
 
                     thread::spawn(move || {
                         let board = { board_ref.lock().unwrap().clone() };
-                        let cal_board = board.unwrap();
+                        let mut cal_board = board.unwrap();
 
                         let time = Instant::now();
-                        let (count, list) = multi_perft_list(&eng, cal_board, depth, 8);
+                        let (count, list) = multi_perft_list(&eng, &mut cal_board, depth, 8);
                         let stop_time = time.elapsed().as_millis();
 
                         for (moves, nodes) in list {
@@ -205,6 +215,21 @@ fn main() {
                         );
                     });
                 },
+
+                Cmd::PrintBoard => {
+                    let board_ref = interface.current_board.clone();
+                    let board = { board_ref.lock().unwrap().clone() };
+
+                    match board {
+                        Some(board) => {
+                            board.print_board();
+                        },
+                        None => {
+                            println!("[ No Current Board ]");
+                        }
+                    }
+                },
+
             }
         }
     }

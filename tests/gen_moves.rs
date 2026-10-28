@@ -1,6 +1,7 @@
 use bitboard::print_bitboard_pos;
 use board::Board;
 use chicory::chicory::{bitboard, board, engine};
+use chicory::chicory::bitboard::Bitboard;
 use engine::Engine;
 
 #[test]
@@ -10,7 +11,7 @@ fn pawn_empty() {
     let (pos, bb) = eng.gen_pawn_moves(&board, 20, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x10000000);
+    assert_eq!(bb, Bitboard::new(0x10000000));
 }
 
 #[test]
@@ -20,7 +21,7 @@ fn pawn_start() {
     let (pos, bb) = eng.gen_pawn_moves(&board, 10, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x4040000);
+    assert_eq!(bb, Bitboard::new(0x4040000));
 }
 
 #[test]
@@ -30,7 +31,7 @@ fn bishop_empty() {
     let (pos, bb) = eng.gen_bishop_moves(&board, 20, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x1824428002844);
+    assert_eq!(bb, Bitboard::new(0x1824428002844));
 }
 
 #[test]
@@ -40,7 +41,7 @@ fn knight_empty() {
     let (pos, bb) = eng.gen_knight_moves(&board, 20, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x2844004428);
+    assert_eq!(bb, Bitboard::new(0x2844004428));
 }
 
 #[test]
@@ -50,7 +51,7 @@ fn rook_empty() {
     let (pos, bb) = eng.gen_rook_moves(&board, 20, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x1010101010ef1010);
+    assert_eq!(bb, Bitboard::new(0x1010101010ef1010));
 }
 
 #[test]
@@ -60,7 +61,7 @@ fn queen_empty() {
     let (pos, bb) = eng.gen_queen_moves(&board, 20, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x1011925438ef3854);
+    assert_eq!(bb, Bitboard::new(0x1011925438ef3854));
 }
 
 #[test]
@@ -70,7 +71,7 @@ fn king_empty() {
     let (pos, bb) = eng.gen_king_moves(&board, 20, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x38283800);
+    assert_eq!(bb, Bitboard::new(0x38283800));
 }
 
 #[test]
@@ -80,7 +81,7 @@ fn pawn_capture() {
     let (pos, bb) = eng.gen_pawn_moves(&board, 33, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x70000000000);
+    assert_eq!(bb, Bitboard::new(0x70000000000));
 }
 
 #[test]
@@ -90,7 +91,7 @@ fn knight_capture() {
     let (pos, bb) = eng.gen_knight_moves(&board, 27, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x142200221400);
+    assert_eq!(bb, Bitboard::new(0x142200221400));
 }
 
 #[test]
@@ -100,7 +101,7 @@ fn bishop_capture() {
     let (pos, bb) = eng.gen_bishop_moves(&board, 27, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x221400140201);
+    assert_eq!(bb, Bitboard::new(0x221400140201));
 }
 
 #[test]
@@ -110,7 +111,7 @@ fn rook_capture() {
     let (pos, bb) = eng.gen_rook_moves(&board, 27, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x808080817080800);
+    assert_eq!(bb, Bitboard::new(0x808080817080800));
 }
 
 #[test]
@@ -120,7 +121,7 @@ fn queen_capture() {
     let (pos, bb) = eng.gen_queen_moves(&board, 27, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x88482a1c171c2800);
+    assert_eq!(bb, Bitboard::new(0x88482a1c171c2800));
 }
 
 #[test]
@@ -130,7 +131,7 @@ fn king_capture() {
     let (pos, bb) = eng.gen_king_moves(&board, 27, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x1c141c0000);
+    assert_eq!(bb, Bitboard::new(0x1c141c0000));
 }
 
 #[test]
@@ -140,7 +141,7 @@ fn pawn_block() {
     let (pos, bb) = eng.gen_pawn_moves(&board, 37, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x0);
+    assert_eq!(bb, Bitboard::new(0x0));
 }
 
 #[test]
@@ -150,7 +151,7 @@ fn bishop_block() {
     let (pos, bb) = eng.gen_bishop_moves(&board, 37, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x0);
+    assert_eq!(bb, Bitboard::new(0x0));
 }
 
 #[test]
@@ -160,7 +161,7 @@ fn rook_block() {
     let (pos, bb) = eng.gen_rook_moves(&board, 37, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x0);
+    assert_eq!(bb, Bitboard::new(0x0));
 }
 
 #[test]
@@ -170,7 +171,7 @@ fn queen_block() {
     let (pos, bb) = eng.gen_queen_moves(&board, 37, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x0);
+    assert_eq!(bb, Bitboard::new(0x0));
 }
 
 #[test]
@@ -180,7 +181,7 @@ fn king_block() {
     let (pos, bb) = eng.gen_king_moves(&board, 37, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x0);
+    assert_eq!(bb, Bitboard::new(0x0));
 }
 
 #[test]
@@ -190,7 +191,7 @@ fn pawn_corner() {
     let (pos, bb) = eng.gen_pawn_moves(&board, 63, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x0);
+    assert_eq!(bb, Bitboard::new(0x0));
 }
 
 #[test]
@@ -200,7 +201,7 @@ fn knight_corner() {
     let (pos, bb) = eng.gen_knight_moves(&board, 63, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x20400000000000);
+    assert_eq!(bb, Bitboard::new(0x20400000000000));
 }
 
 #[test]
@@ -210,7 +211,7 @@ fn bishop_corner() {
     let (pos, bb) = eng.gen_bishop_moves(&board, 63, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x40201008040201);
+    assert_eq!(bb, Bitboard::new(0x40201008040201));
 }
 
 #[test]
@@ -220,7 +221,7 @@ fn rook_corner() {
     let (pos, bb) = eng.gen_rook_moves(&board, 63, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x7f80808080808080);
+    assert_eq!(bb, Bitboard::new(0x7f80808080808080));
 }
 
 #[test]
@@ -230,7 +231,7 @@ fn queen_corner() {
     let (pos, bb) = eng.gen_queen_moves(&board, 63, board.pieces[board.turn]);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x7fc0a09088848281);
+    assert_eq!(bb, Bitboard::new(0x7fc0a09088848281));
 }
 
 #[test]
@@ -240,5 +241,5 @@ fn king_corner() {
     let (pos, bb) = eng.gen_king_moves(&board, 63, board.turn);
     print_bitboard_pos(bb, pos);
 
-    assert_eq!(bb, 0x40c0000000000000);
+    assert_eq!(bb, Bitboard::new(0x40c0000000000000));
 }

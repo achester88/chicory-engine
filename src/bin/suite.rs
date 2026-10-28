@@ -49,6 +49,7 @@ fn main() -> ExitCode {
     let mut smallest: Option<LineInfo> = None;
     let mut smallest_i = 0;
     let mut test_done = 0;
+    let mut total_node = 0;
     let full_start = Instant::now();
     let mut c = 0;
 
@@ -61,7 +62,8 @@ fn main() -> ExitCode {
         let mut i = 0;
         while i < test.node_count.len() && i <= depth_limit {
             print!("    D{} ", i);
-            let count = multi_perft(&engine, board, i, 8); //perft(&engine, board, i);
+            let count = multi_perft(&engine, board.clone(), i, 8); //perft(&engine, board, i);
+            total_node += count;
             let outcome = check_outcome(count, test.node_count[i]);
 
             if outcome != Status::Passed {
@@ -106,11 +108,15 @@ fn main() -> ExitCode {
         println!();
     }
 
+    let end_time = full_start.elapsed().as_secs_f64();
+
     println!("\n\n-----------------------------------------------------");
     println!("Finished Perft Testing Suite\n");
-    println!("Total FENs Done: {:?}", c);
-    println!("Total Test Done: {:?}", test_done);
-    println!("Total Time: {:?}(s)\n", full_start.elapsed().as_secs_f64());
+    println!("Total FENs Done:        {:?}", c);
+    println!("Total Test Done:        {:?}", test_done);
+    println!("Total Nodes Generated:  {:?}", total_node);
+    println!("Average NPS:            {:.2}", (total_node as f64 ) / end_time);
+    println!("Total Time:             {:?}(s)\n", end_time);
     println!(
         "\x1b[1;32mPassed\x1b[0m: {} ({}%)",
         results[0],
