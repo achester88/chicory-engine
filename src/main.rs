@@ -72,7 +72,7 @@ fn main() {
                     thread::spawn(move || {
                         let move_timer = Instant::now();
                         let board = { board_ref.lock().unwrap().clone() };
-                        let mut cal_board = board.unwrap();
+                        let cal_board = board.unwrap();
                         let mut positions_reached = positions_reached_ref.lock().unwrap();
                         let mut transposition_table = transposition_table_ref.lock().unwrap();
 

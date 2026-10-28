@@ -4,8 +4,6 @@ use crate::chicory::engine::Engine;
 use crate::chicory::utils::bit_scan;
 use core::ops::{Index, IndexMut, Not};
 use crate::chicory::bitboard::Bitboard;
-use crate::chicory::board::PieceType::King;
-//use crate::chicory::board::MoveType::Move;
 use crate::chicory::tables::ZobristKeys;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -281,7 +279,7 @@ impl Board {
     }
 
     pub fn lookup(&self, pos: usize) -> Option<(PieceColor, PieceType)> {
-        let board = Bitboard::new((1 << pos));
+        let board = Bitboard::new(1 << pos);
 
         let color: PieceColor;
 
@@ -466,7 +464,7 @@ impl Board {
 
         match pt {
             PieceType::Pawn => {
-                self.pawns[pc] = self.pawns[pc] & !Bitboard::new((1 << pos));
+                self.pawns[pc] = self.pawns[pc] & !Bitboard::new(1 << pos);
                 self.zobrist_hash ^= zobrist_keys.pawns[pc][pos];
                 //self.occupied &= !(1 << pos);
             },
@@ -876,7 +874,7 @@ impl Board {
         if from == 4 && (to == 2 || to == 6) {
             let (_, pt) = self.lookup(from).unwrap();
             if pt == PieceType::King {
-                return if (to == 2) {
+                return if to == 2 {
                     Move { from, to, promote_to, move_type: MoveType::CastleQueenSide }
                 } else {
                     Move { from, to, promote_to, move_type: MoveType::CastleKingSide }
@@ -885,7 +883,7 @@ impl Board {
         } else if from == 60 && (to == 58 || to == 62) {
             let (_, pt) = self.lookup(from).unwrap();
             if pt == PieceType::King {
-                return if (to == 58) {
+                return if to == 58 {
                     Move { from, to, promote_to, move_type: MoveType::CastleQueenSide }
                 } else {
                     Move { from, to, promote_to, move_type: MoveType::CastleKingSide }

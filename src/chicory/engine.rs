@@ -336,7 +336,7 @@ impl Engine {
         for to in hits {
             if !(Bitboard::new(1 << to) & attackable_check_pos).is_empty() {
 
-                let pos_board = Bitboard::new((1 << to));
+                let pos_board = Bitboard::new(1 << to);
                 let att;
 
                 if pos_board & (board.pawns[opp_color] | board.bishops[opp_color] | board.knights[opp_color]) != Bitboard::new(0) {

@@ -1,6 +1,5 @@
 use chicory::chicory::board::{Board};
 use chicory::chicory::engine::{Engine};
-use chicory::chicory::tables::ZobristKeys;
 
 #[test]
 fn hash_move_unmove() {

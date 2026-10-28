@@ -17,7 +17,7 @@ pub fn fen_arr(eng: &Engine, from: usize, new_boards: Vec<(usize, &str)>) -> Vec
     //let eng = engine::Engine::new(); //Only for testing
 
     for (to, fen) in new_boards.iter() {
-        boards.push((OldMove{from, to: *to, board: Board::new(fen, eng), promote_to: None, capture: false}));
+        boards.push(OldMove{from, to: *to, board: Board::new(fen, eng), promote_to: None, capture: false});
     }
 
     boards

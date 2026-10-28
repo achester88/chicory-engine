@@ -1,4 +1,3 @@
-use super::utils::bit_scan;
 use std::ops::{BitAnd, Shl, Shr, BitOr, BitAndAssign, BitOrAssign, BitXor};
 use std::ops::Not;
 

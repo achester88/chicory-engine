@@ -1,5 +1,5 @@
 use chicory::chicory::bitboard::Bitboard;
-use chicory::chicory::board::{Board, Move};
+use chicory::chicory::board::{Board};
 use chicory::chicory::engine::Engine;
 
 mod common;
@@ -10,7 +10,7 @@ use common::fen_arr;
 fn pawn_base() {
     let eng = Engine::new();
     let board = Board::new("8/8/8/8/8/3p4/2P5/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(&board);
+    let moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
@@ -33,7 +33,7 @@ fn pawn_base() {
 fn knight_base() {
     let eng = Engine::new();
     let board = Board::new("8/8/2p2n2/8/2pNp3/1r6/4p3/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(&board);
+    let moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
@@ -59,7 +59,7 @@ fn knight_base() {
 fn queen_base() {
     let eng = Engine::new();
     let board = Board::new("8/1K6/6p1/8/1p2Q3/4p3/8/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(&board);
+    let moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     //Queen
@@ -116,7 +116,7 @@ fn queen_base() {
 fn pawn_en_passant() {
     let eng = Engine::new();
     let board = Board::new("8/8/8/3Pp3/8/8/8/8 w - e6 0 1", &eng);
-    let mut moves = eng.gen_moves(&board);
+    let moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
@@ -136,7 +136,7 @@ fn pawn_en_passant() {
 fn pawn_promote() {
     let eng = Engine::new();
     let board = Board::new("8/1P6/8/8/8/8/8/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(&board);
+    let moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
@@ -158,7 +158,7 @@ fn pawn_promote() {
 fn pawn_promote_black() {
     let eng = Engine::new();
     let board = Board::new("8/8/8/8/8/8/1p6/8 b - - 1 1", &eng);
-    let mut moves = eng.gen_moves(&board);
+    let moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     assert_fen_arr(
@@ -180,7 +180,7 @@ fn pawn_promote_black() {
 fn pawn_capture_promote() {
     let eng = Engine::new();
     let board = Board::new("1p6/2P5/8/8/8/8/8/8 w - - 0 1", &eng);
-    let mut moves = eng.gen_moves(&board);
+    let moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     let mut fen_moves: Vec<OldMove> = vec![];
@@ -221,7 +221,7 @@ fn king_check() {
     board.check_real = check_real;
     board.check_full = check_full;
 
-    let mut moves = eng.gen_moves(&board);
+    let moves = eng.gen_moves(&board);
     println!("Moves: {:?}", moves);
 
     let mut fen_moves = fen_arr(
@@ -319,7 +319,7 @@ fn king_to_check_next() {
 
     //println!("SPLIT----------------");
 
-    let mut next_moves = eng.gen_moves(&moves[0].board);
+    let next_moves = eng.gen_moves(&moves[0].board);
 
     assert_fen_arr(
         &mut moves_to_oldmoves(&eng, &moves[0].board, next_moves),
