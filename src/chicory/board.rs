@@ -107,7 +107,7 @@ pub struct LastMoveInfo {
 }
 
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Board {
     pub pawns: [Bitboard; 2],
     pub bishops: [Bitboard; 2],

@@ -327,8 +327,6 @@ impl Engine {
     }
 
     pub fn cal_check(&self, board: &Board, pos: usize, opp_color: PieceColor, inculde_pawn_diag: bool) -> (Bitboard, Bitboard) {
-        //println!("S--------------------");
-        //board.print_board();
         let mut check_real: Bitboard = Bitboard::new(0);
         let mut check_full: Bitboard = Bitboard::new(0);
         let attackable_check_pos = self.king_attackables[pos];
@@ -337,25 +335,32 @@ impl Engine {
 
         for to in hits {
             if !(Bitboard::new(1 << to) & attackable_check_pos).is_empty() {
-                //let (_, pt) = board.lookup(to);
-                match board.lookup(to) {
-                    Some ((_, pt)) => {
-                        let (_, att) = match pt {
-                            PieceType::Pawn => {
-                                if inculde_pawn_diag {
-                                    //(0, self.gen_pawn_moves_raw(&board, to, opp_color, 0xffffffffffffffff).1 & !(1 << to)) //TODO replace with get pawn attacks
-                                    // print_bitboard_pos(self.pawn_attacks[opp_color as usize][to], pos);
-                                    (0, self.pawn_attacks[opp_color as usize][to])
-                                } else {
-                                    self.gen_pawn_moves(&board, to, opp_color)
-                                }
-                            }, //en_pass??
-                            PieceType::Knight => self.gen_knight_moves(&board, to, opp_color),
-                            PieceType::Bishop => self.gen_bishop_moves(&board, to, board.pieces[opp_color]),
-                            PieceType::Rook => self.gen_rook_moves(&board, to, board.pieces[opp_color]),
-                            PieceType::Queen => self.gen_queen_moves(&board, to, board.pieces[opp_color]),
-                            PieceType::King => self.gen_king_moves(&board, to, opp_color),
-                        };
+
+                let pos_board = Bitboard::new((1 << to));
+                let att;
+
+                if pos_board & (board.pawns[opp_color] | board.bishops[opp_color] | board.knights[opp_color]) != Bitboard::new(0) {
+                    if pos_board & board.pawns[opp_color] != Bitboard::new(0) {
+                        if inculde_pawn_diag {
+                            att = self.pawn_attacks[opp_color as usize][to];
+                        } else {
+                            (_, att) = self.gen_pawn_moves(&board, to, opp_color);
+                        }
+                    } else if pos_board & board.bishops[opp_color] != Bitboard::new(0) {
+                        (_, att) = self.gen_bishop_moves(&board, to, board.pieces[opp_color]);
+                    } else {
+                        (_, att) = self.gen_knight_moves(&board, to, opp_color);
+                    }
+                } else {
+                    if pos_board & board.rooks[opp_color] != Bitboard::new(0) {
+                        (_, att) = self.gen_rook_moves(&board, to, board.pieces[opp_color]);
+                    } else if pos_board & board.queens[opp_color] != Bitboard::new(0) {
+                        (_, att) = self.gen_queen_moves(&board, to, board.pieces[opp_color]);
+                    } else {
+                        (_, att) = self.gen_king_moves(&board, to, opp_color);
+                    }
+                }
+
                         if !(att & Bitboard::new(1 << pos)).is_empty() {
                             // println!("HITTTTTT at {}", pos);
                             let (cr, cf) = self.gen_check_info(&board, to, pos);
@@ -363,31 +368,11 @@ impl Engine {
                             check_real = check_real | cr;
                             check_full = check_full | cf;
                         }
-                    },
-                    None => {}
-                }
 
             }
         }
-        //println!("Check real: 0x{:x}", check_real);
-        //println!("Check Full: 0x{:x}", check_full);
-        //println!("E--------------------");
+
         (check_real, check_full)
-    }
-
-    fn gen_king_attacks() -> Vec<Bitboard> {
-        let mut attacks: Vec<Bitboard> = vec![Bitboard::new(0); 64];
-
-        for i in 0..64 {
-            let mut pos = Bitboard::new(1 << i);
-
-            pos |= postshift::east_one(pos) | postshift::west_one(pos);
-            pos |= postshift::nort_one(pos) | postshift::sout_one(pos);
-
-            attacks[i] = pos;
-        }
-
-        attacks
     }
 
     pub fn gen_king_attackables(&self) -> Vec<Bitboard> {
@@ -412,11 +397,10 @@ impl Engine {
     }
 
     pub fn gen_check_info(&self, board: &Board, pos: usize, king_pos: usize) -> (Bitboard, Bitboard) {
-        let mut kingless = board.clone();
+        let mut kingless: Board = *board;//.copy();
         kingless.occupied &= !board.kings[board.turn];
         kingless.kings[board.turn] = Bitboard::new(0);
         kingless.pieces[board.turn] &= !board.kings[board.turn];
-        //kingless.recalc_board();
 
         let mut check_real: Bitboard = Bitboard::new(0); //any piece other than the king need to occupied
         let mut check_full: Bitboard = Bitboard::new(0); //king can not be on
